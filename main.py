@@ -1,12 +1,13 @@
 from config import Config, OntologyConfig, CabascConfig, LCR_RotConfig, LCR_RotInverseConfig, LCR_RotHopConfig, \
-    DiagnosticClassifierConfig, LocalInterpretableConfig
+    DiagnosticClassifierConfig, LocalInterpretableConfig, SVMConfig
 from data_setup.external_data_loader import ExternalDataLoader
 from data_setup.internal_data_loader import InternalDataLoader
-from abs_classifier.ontology_reasoner import OntologyReasoner
-from abs_classifier.cabasc import CABASCModel
-from abs_classifier.lcr_rot import LCRRot
-from abs_classifier.lcr_rot_inverse import LCRRotInverse
-from abs_classifier.lcr_rot_hop import LCRRotHopModel
+from abs_classifiers.ontology_reasoner import OntologyReasoner
+from abs_classifiers.cabasc import CABASCModel
+from abs_classifiers.lcr_rot import LCRRot
+from abs_classifiers.lcr_rot_inverse import LCRRotInverse
+from abs_classifiers.lcr_rot_hop import LCRRotHopModel
+from abs_classifiers.svm import SVM
 from diagnostic_classifier.diagnostic_classifier import DiagnosticClassifier
 import os
 
@@ -46,6 +47,9 @@ def main():
         ontology_reasoner.run()
 
     if svm:
+
+        svm_model = SVM(SVMConfig)
+        svm_model.run()
 
 
     if cabasc:

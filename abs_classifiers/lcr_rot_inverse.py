@@ -1,4 +1,4 @@
-from abs_classifier.neural_language_model import NeuralLanguageModel
+from abs_classifiers.neural_language_model import NeuralLanguageModel
 import tensorflow as tf
 
 

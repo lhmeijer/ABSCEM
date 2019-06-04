@@ -21,6 +21,7 @@ class Config:
 
 class OntologyConfig(Config):
 
+class SVMConfig(Config):
 
 
 class NeuralLanguageModelConfig(Config):

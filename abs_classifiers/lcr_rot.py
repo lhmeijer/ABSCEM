@@ -1,7 +1,7 @@
-from abs_classifier.neural_language_model import NeuralLanguageModel
+from abs_classifiers.neural_language_model import NeuralLanguageModel
 import tensorflow as tf
-from neural_network_layer.attention_layers import attention_function
-from neural_network_layer.nn_layers import bi_dynamic_rnn, softmax_layer
+from neural_network_layers.attention_layers import attention_function
+from neural_network_layers.nn_layers import bi_dynamic_rnn, softmax_layer
 
 class LCRRot(NeuralLanguageModel):
 
