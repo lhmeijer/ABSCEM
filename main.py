@@ -53,12 +53,12 @@ def main():
 
     if svm:
 
-        svm_model = SVM(SVMConfig)
+        svm_model = SVM(SVMConfig, internal_data_loader)
         svm_model.run()
 
 
     if cabasc:
-        cabasc_model = CABASCModel(CabascConfig)
+        cabasc_model = CABASCModel(CabascConfig, internal_data_loader)
         cabasc_model.run()
 
         if diagnostic_classifier:
@@ -69,7 +69,7 @@ def main():
 
 
     if lcr_rot:
-        lcr_rot_model = LCRRot(LCR_RotConfig)
+        lcr_rot_model = LCRRot(LCR_RotConfig, internal_data_loader)
         lcr_rot_model.run()
 
         if diagnostic_classifier:
@@ -78,7 +78,7 @@ def main():
 
 
     if lcr_rot_inverse:
-        lcr_rot_inverse_model = LCRRotInverse(LCR_RotInverseConfig)
+        lcr_rot_inverse_model = LCRRotInverse(LCR_RotInverseConfig, internal_data_loader)
         lcr_rot_inverse_model.run()
 
         if diagnostic_classifier:
@@ -87,7 +87,7 @@ def main():
 
 
     if lcr_rot_hop:
-        lcr_rot_hop_model = LCRRotHopModel(LCR_RotHopConfig)
+        lcr_rot_hop_model = LCRRotHopModel(LCR_RotHopConfig, internal_data_loader)
         lcr_rot_hop_model.run()
 
 

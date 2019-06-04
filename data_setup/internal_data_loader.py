@@ -13,6 +13,7 @@ class InternalDataLoader:
         self.word_embeddings_training_only = []
         self.bag_of_words_training = []
         self.part_of_speech_training = []
+        self.negation_in_training = []
         self.word_mentions_training = []
         self.word_polarities_training = []
         self.word_relations_training = []
@@ -25,6 +26,7 @@ class InternalDataLoader:
         self.word_embeddings_test_only = []
         self.bag_of_words_test= []
         self.part_of_speech_test = []
+        self.negation_in_test = []
         self.word_mentions_test = []
         self.word_polarities_test = []
         self.word_relations_test = []
@@ -43,6 +45,7 @@ class InternalDataLoader:
 
                 self.word_embeddings_training_only.append(sentence['word_embeddings'])
                 self.part_of_speech_training.append(sentence['part_of_speech_tags'])
+                self.negation_in_training.append(sentence['word_negations'])
 
                 for n_aspects in range(len(sentence['aspects'])):
                     self.lemmatized_training.append(sentence['lemmatized_sentence'])
@@ -66,6 +69,7 @@ class InternalDataLoader:
 
                 self.word_embeddings_test_only.append(sentence['word_embeddings'])
                 self.part_of_speech_test.append(sentence['part_of_speech_tags'])
+                self.negation_in_test.append(sentence['word_negations'])
 
                 for n_aspects in range(len(sentence['aspects'])):
                     self.lemmatized_test.append(sentence['lemmatized_sentence'])

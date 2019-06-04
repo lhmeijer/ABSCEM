@@ -22,11 +22,14 @@ class Config:
 
 class OntologyConfig(Config):
 
+    name_of_model = "ontology_reasoner"
     cross_validation_rounds = 10
     file_of_results = "results/abs_classifiers/ontology_reasoner_" + str(Config.year) + ".json"
+    remaining_data = "data/internal_data/remaining_indices_ontology_" + str(Config.year) + ".json"
 
 class SVMConfig(Config):
 
+    name_of_model = "svm_model"
     cross_validation_rounds = 10
     file_of_results = "results/abs_classifiers/svm_model_" + str(Config.year) + ".json"
 
@@ -49,6 +52,7 @@ class NeuralLanguageModelConfig(Config):
 
 class CabascConfig(NeuralLanguageModelConfig):
 
+    name_of_model = "CABASC_model"
     batch_size = 20
     number_hidden_units = 300
     l2_regularization = 0.00001
@@ -66,6 +70,8 @@ class CabascConfig(NeuralLanguageModelConfig):
 
 
 class LCR_RotConfig(NeuralLanguageModelConfig):
+
+    name_of_model = "LCR_Rot_model"
     batch_size = 20
     number_hidden_units = 300
     l2_regularization = 0.00001
@@ -75,6 +81,8 @@ class LCR_RotConfig(NeuralLanguageModelConfig):
     file_of_results = "results/abs_classifiers/LCR_Rot_model_" + str(Config.year) + ".json"
 
 class LCR_RotInverseConfig(LCR_RotConfig):
+
+    name_of_model = "LCR_Rot_inverse_model"
     batch_size = 20
     number_hidden_units = 300
     l2_regularization = 0.00001
@@ -83,6 +91,8 @@ class LCR_RotInverseConfig(LCR_RotConfig):
     file_of_results = "results/abs_classifiers/LCR_Rot_inverse_model_" + str(Config.year) + ".json"
 
 class LCR_RotHopConfig(LCR_RotConfig):
+
+    name_of_model = "LCR_Rot_hop_model"
     batch_size = 20
     number_hidden_units = 300
     l2_regularization = 0.00001

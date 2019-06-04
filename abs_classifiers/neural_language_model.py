@@ -3,13 +3,32 @@ import tensorflow as tf
 
 class NeuralLanguageModel:
 
-    def __int__(self, config):
+    def __int__(self, config, internal_data_loader):
         self.config = config
+        self.internal_data_loader = internal_data_loader
 
     def model_itself(self, left_sentence_part, right_sentence_part, target_part):
         pass
 
     def run(self):
+
+        results = {
+            'classification model': self.config.name_of_model,
+            'size_of_training_set': len(self.internal_data_loader.lemmatized_training),
+            'size_of_test_set': len(self.internal_data_loader.lemmatized_test),
+            'size_of_cross_validation_sets': 0,
+            'out_of_sample_accuracy_majority': 0,
+            'in_sample_accuracy_majority': 0,
+            'cross_val_accuracy_majority': [],
+            'cross_val_mean_accuracy_majority': "cross validation is switched off",
+            'cross_val_stdeviation_majority': "cross validation is switched off",
+            'out_of_sample_accuracy_with_backup': "No backup model is used for ontology reasoner",
+            'in_sample_accuracy_with_backup': "No backup model is used for ontology reasoner",
+            'cross_val_accuracy_with_backup': [],
+            'cross_val_mean_accuracy_with_backup': "cross validation is switched off",
+            'cross_val_stdeviation_with_backup': "cross validation is switched off"
+        }
+
 
         left_part = tf.placeholder(tf.int32, [None, self.config.max_sentence_length])
         sen_len = tf.placeholder(tf.int32, None)
