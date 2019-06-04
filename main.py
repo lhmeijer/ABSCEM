@@ -21,6 +21,11 @@ def main():
         external_data_loader.load_external_data(load_external_file_name=Config.external_test_data,
                                                 write_internal_file_name=Config.internal_test_data)
 
+    # Run internal data loader to set up all different data sets
+    internal_data_loader = InternalDataLoader(Config)
+    internal_data_loader.load_internal_training_data(load_internal_file_name=Config.internal_train_data)
+    internal_data_loader.load_internal_test_data(load_internal_file_name=Config.internal_test_data)
+
     # Aspect-Based Sentiment Classifiers, which do you want on or off
     ontology = True
     svm = True
@@ -43,7 +48,7 @@ def main():
 
     if ontology:
 
-        ontology_reasoner = OntologyReasoner(OntologyConfig)
+        ontology_reasoner = OntologyReasoner(OntologyConfig, internal_data_loader)
         ontology_reasoner.run()
 
     if svm:

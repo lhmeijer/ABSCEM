@@ -6,8 +6,9 @@ class Config:
     year = 2015
     embedding_dimension = 300
     hybrid = False
-    cross_validation_rounds = 10
+    cross_validation_percentage_training = 0.8
     cross_validation = False
+    seed = 100
 
     external_train_data = "data/external_data/restaurant_train_" + str(year) + ".xml"
     external_test_data = "data/external_data/restaurant_test_" + str(year) + ".xml"
@@ -21,7 +22,13 @@ class Config:
 
 class OntologyConfig(Config):
 
+    cross_validation_rounds = 10
+    file_of_results = "results/abs_classifiers/ontology_reasoner_" + str(Config.year) + ".json"
+
 class SVMConfig(Config):
+
+    cross_validation_rounds = 10
+    file_of_results = "results/abs_classifiers/svm_model_" + str(Config.year) + ".json"
 
 
 class NeuralLanguageModelConfig(Config):
@@ -53,6 +60,9 @@ class CabascConfig(NeuralLanguageModelConfig):
     momentum = 0.95
     keep_prob1 = 0.5
     keep_prob2 = 0.5
+    cross_validation_rounds = 10
+
+    file_of_results = "results/abs_classifiers/CABASC_model_" + str(Config.year) + ".json"
 
 
 class LCR_RotConfig(NeuralLanguageModelConfig):
@@ -60,6 +70,9 @@ class LCR_RotConfig(NeuralLanguageModelConfig):
     number_hidden_units = 300
     l2_regularization = 0.00001
     number_of_iterations = 50
+    cross_validation_rounds = 10
+
+    file_of_results = "results/abs_classifiers/LCR_Rot_model_" + str(Config.year) + ".json"
 
 class LCR_RotInverseConfig(LCR_RotConfig):
     batch_size = 20
@@ -67,11 +80,15 @@ class LCR_RotInverseConfig(LCR_RotConfig):
     l2_regularization = 0.00001
     number_of_iterations = 50
 
+    file_of_results = "results/abs_classifiers/LCR_Rot_inverse_model_" + str(Config.year) + ".json"
+
 class LCR_RotHopConfig(LCR_RotConfig):
     batch_size = 20
     number_hidden_units = 300
     l2_regularization = 0.00001
     number_of_iterations = 50
+
+    file_of_results = "results/abs_classifiers/LCR_Rot_hop_model_" + str(Config.year) + ".json"
 
 class DiagnosticClassifierConfig(Config):
 

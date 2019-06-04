@@ -6,10 +6,13 @@ venv/
 .idea
 
 # external_data
-external_data/
+data/external_data/
 
 # internal_data
-internal_data/
+data/internal_data/
+
+# results/abs_classifiers
+results/abs_classifiers/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
