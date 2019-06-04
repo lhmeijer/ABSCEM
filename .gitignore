@@ -11,6 +11,9 @@ data/external_data/
 # internal_data
 data/internal_data/
 
+# model_savings
+data/model_savings/
+
 # results/abs_classifiers
 results/abs_classifiers/
 

@@ -61,7 +61,7 @@ def dynamic_rnn(cell, inputs, n_hidden, length, max_len, scope_name, out_type='l
     # return outputs
 
 
-def bi_dynamic_rnn(cell, inputs, n_hidden, length, max_len, scope_name, out_type='last'):
+def bi_dynamic_rnn(cell, inputs, n_hidden, length):
 
     model = tf.keras.Sequential([
         tf.keras.layers.Bidirectional(cell(n_hidden, return_sequences=True), merge_mode="concat"),

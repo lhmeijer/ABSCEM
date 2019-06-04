@@ -1,57 +1,75 @@
 from abs_classifiers.neural_language_model import NeuralLanguageModel
 import tensorflow as tf
 from neural_network_layers.attention_layers import attention_function
-from neural_network_layers.nn_layers import bi_dynamic_rnn, softmax_layer
+from neural_network_layers.nn_layers import bi_dynamic_rnn, softmax_layer, reduce_mean_with_len
+
 
 class LCRRot(NeuralLanguageModel):
 
-    def __init__(self, config):
+    def __init__(self, config, internal_data_loader):
         self.config = config
+        self.internal_data_loader = internal_data_loader
 
-    def model_itself(self, left_sentence_part, right_sentence_part, target_part):
+    def model_itself(self, left_sentence_parts, left_sentence_lengths, right_sentence_parts, right_sentence_lengths,
+                     target_parts, target_lengths):
 
         print('I am lcr rot.')
         _id = '_lcr_rot'
 
         cell = tf.keras.layers.LSTM
 
-        # left hidden
-        input_left = tf.nn.dropout(left_sentence_part, keep_prob=self.config.keep_prob1)
-        left_hidden_state = bi_dynamic_rnn(cell, input_left, FLAGS.n_hidden, sen_len_fw, FLAGS.max_sentence_len, 'l' + _id, 'all')
+        # left hidden states
+        input_left = tf.nn.dropout(left_sentence_parts, keep_prob=self.config.keep_prob1)
+        left_hidden_state = bi_dynamic_rnn(cell, input_left, self.config.number_hidden_units, left_sentence_lengths)
 
-        # right hidden
-        input_right = tf.nn.dropout(right_sentence_part, keep_prob=self.config.keep_prob1)
-        right_hidden_state = bi_dynamic_rnn(cell, input_right, FLAGS.n_hidden, sen_len_bw, FLAGS.max_sentence_len, 'r' + _id, 'all')
+        # right hidden states
+        input_right = tf.nn.dropout(right_sentence_parts, keep_prob=self.config.keep_prob1)
+        right_hidden_state = bi_dynamic_rnn(cell, input_right, self.config.number_hidden_units, right_sentence_lengths)
 
-
-        # target hidden
-        target = tf.nn.dropout(target_part, keep_prob=self.config.keep_prob1)
-        target_hidden_state = bi_dynamic_rnn(cell, target, FLAGS.n_hidden, sen_len_tr, FLAGS.max_sentence_len, 't' + _id, 'all')
+        # target hidden states
+        target = tf.nn.dropout(target_parts, keep_prob=self.config.keep_prob1)
+        target_hidden_state = bi_dynamic_rnn(cell, target, self.config.number_hidden_units, target_lengths)
 
         # Pooling target hidden layer
-        pool_t = reduce_mean_with_len(target_hidden_state, sen_len_tr)
+        pool_t = reduce_mean_with_len(target_hidden_state, target_lengths)
 
         # attention left
-        att_l = attention_function(left_hidden_state, pool_t, sen_len_fw, self.config.l2_regularization, FLAGS.random_base, 'att_l' + _id)
+        att_l = attention_function(left_hidden_state, pool_t, left_sentence_lengths, self.config.l2_regularization,
+                                   self.config.random_base, 'att_l' + _id)
 
         left_context_representation = tf.squeeze(tf.matmul(att_l, left_hidden_state))
 
         # attention right
-        att_r = attention_function(right_hidden_state, pool_t, sen_len_fw, self.config.l2_regularization, FLAGS.random_base, 'att_r' + _id)
+        att_r = attention_function(right_hidden_state, pool_t, right_sentence_parts, self.config.l2_regularization,
+                                   self.config.random_base, 'att_r' + _id)
 
         right_context_representation = tf.squeeze(tf.matmul(att_r, right_hidden_state))
 
         # attention target
-        att_t_l = attention_function(target_hidden_state, left_context_representation, sen_len_tr, self.config.l2_regularization, FLAGS.random_base, 'att_t_l' + _id)
+        att_t_l = attention_function(target_hidden_state, left_context_representation, target_lengths,
+                                     self.config.l2_regularization, self.config.random_base, 'att_t_l' + _id)
 
         target_left_context_representation = tf.squeeze(tf.matmul(att_t_l, target_hidden_state))
 
-        att_t_r = attention_function(target_hidden_state, right_context_representation, sen_len_tr, self.config.l2_regularization, FLAGS.random_base, 'att_t_r' + _id)
+        att_t_r = attention_function(target_hidden_state, right_context_representation, target_lengths,
+                                     self.config.l2_regularization, self.config.random_base, 'att_t_r' + _id)
 
         target_right_context_representation = tf.squeeze(tf.matmul(att_t_r, target_hidden_state))
 
-        sentence_representation = tf.concat([left_context_representation, target_left_context_representation, target_right_context_representation, right_context_representation], 1)
+        sentence_representation = tf.concat([left_context_representation, target_left_context_representation,
+                                             target_right_context_representation, right_context_representation], 1)
 
-        prob = softmax_layer(sentence_representation, 8 * FLAGS.n_hidden, FLAGS.random_base, self.config.keep_prob2, FLAGS.l2_reg, FLAGS.n_class)
+        prob = softmax_layer(sentence_representation, 8 * self.config.number_hidden_units, self.config.random_base,
+                             self.config.keep_prob2, self.config.l2_regularization, self.config.number_of_classes)
 
-        return prob, att_l, att_r, att_t_l, att_t_r
+        layer_information = {
+            'left_hidden_state': left_hidden_state,
+            'right_hidden_state': right_hidden_state,
+            'target_hidden_state': target_hidden_state,
+            'left_context_representation': left_context_representation,
+            'right_context_representation': right_context_representation,
+            'target_left_context_representation': target_left_context_representation,
+            'target_right_context_representation': target_right_context_representation
+        }
+
+        return prob, layer_information

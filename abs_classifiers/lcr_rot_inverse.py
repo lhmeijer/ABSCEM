@@ -4,8 +4,9 @@ import tensorflow as tf
 
 class LCRRotInverse(NeuralLanguageModel):
 
-    def __init__(self, config):
+    def __init__(self, config, internal_data_loader):
         self.config = config
+        self.internal_data_loader
 
     def model_itself(self, left_sentence_part, right_sentence_part, target_part):
         print('I am lcr rot inverse.')
@@ -56,4 +57,14 @@ class LCRRotInverse(NeuralLanguageModel):
         prob = softmax_layer(sentence_representation, 8 * FLAGS.n_hidden, FLAGS.random_base, self.config.keep_prob2,
                              FLAGS.l2_reg, FLAGS.n_class)
 
-        return prob, att_l, att_r, att_t_l, att_t_r
+        layer_information = {
+            'left_hidden_state': left_hidden_state,
+            'right_hidden_state': right_hidden_state,
+            'target_hidden_state': target_hidden_state,
+            'left_context_representation': left_context_representation,
+            'right_context_representation': right_context_representation,
+            'target_left_context_representation': target_left_context_representation,
+            'target_right_context_representation': target_right_context_representation
+        }
+
+        return prob, layer_information, att_l, att_r, att_t_l, att_t_r

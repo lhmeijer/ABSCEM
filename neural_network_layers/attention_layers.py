@@ -12,7 +12,7 @@ def softmax_with_len(inputs, length, max_len):
     return inputs / _sum
 
 
-def attention_function(hidden_states, context_representation, length, n_hidden, l2_reg, random_base, layer_id):
+def attention_function(hidden_states, context_representation, length, l2_reg, random_base, layer_id):
 
     batch_size = tf.shape(hidden_states)[0]
     number_of_words = tf.shape(hidden_states)[1]

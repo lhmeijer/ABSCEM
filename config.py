@@ -19,13 +19,13 @@ class Config:
     glove_embeddings = "data/external_data/glove.42B." + str(embedding_dimension) + "d.txt"
 
 
-
 class OntologyConfig(Config):
 
     name_of_model = "ontology_reasoner"
     cross_validation_rounds = 10
     file_of_results = "results/abs_classifiers/ontology_reasoner_" + str(Config.year) + ".json"
     remaining_data = "data/internal_data/remaining_indices_ontology_" + str(Config.year) + ".json"
+
 
 class SVMConfig(Config):
 
@@ -64,9 +64,11 @@ class CabascConfig(NeuralLanguageModelConfig):
     momentum = 0.95
     keep_prob1 = 0.5
     keep_prob2 = 0.5
+    random_base = 0.01
     cross_validation_rounds = 10
 
     file_of_results = "results/abs_classifiers/CABASC_model_" + str(Config.year) + ".json"
+    file_to_save_model = "data/model_savings/CABASC_model_" + str(Config.year) + "_tf.model"
 
 
 class LCR_RotConfig(NeuralLanguageModelConfig):
@@ -76,51 +78,40 @@ class LCR_RotConfig(NeuralLanguageModelConfig):
     number_hidden_units = 300
     l2_regularization = 0.00001
     number_of_iterations = 50
+    random_base = 0.01
+
     cross_validation_rounds = 10
 
     file_of_results = "results/abs_classifiers/LCR_Rot_model_" + str(Config.year) + ".json"
+    file_to_save_model = "data/model_savings/LCR_Rot_model_" + str(Config.year) + "_tf.model"
+
 
 class LCR_RotInverseConfig(LCR_RotConfig):
 
     name_of_model = "LCR_Rot_inverse_model"
-    batch_size = 20
-    number_hidden_units = 300
-    l2_regularization = 0.00001
-    number_of_iterations = 50
-
     file_of_results = "results/abs_classifiers/LCR_Rot_inverse_model_" + str(Config.year) + ".json"
+    file_to_save_model = "data/model_savings/LCR_Rot_inverse_model_" + str(Config.year) + "_tf.model"
+
 
 class LCR_RotHopConfig(LCR_RotConfig):
 
     name_of_model = "LCR_Rot_hop_model"
-    batch_size = 20
-    number_hidden_units = 300
-    l2_regularization = 0.00001
-    number_of_iterations = 50
-
     file_of_results = "results/abs_classifiers/LCR_Rot_hop_model_" + str(Config.year) + ".json"
+    file_to_save_model = "data/model_savings/LCR_Rot_hop_model_" + str(Config.year) + "_tf.model"
+
 
 class DiagnosticClassifierConfig(Config):
 
+    # targets to train the diagnostic classifier
+    part_of_speech_tagging = True
+    negation_tagging = True
+    polarity_towards_aspect = True
+    relation_towards_aspect = True
+    ontology_mention = True
+
+
 class LocalInterpretableConfig(Config):
 
-
-    # tf.app.flags.DEFINE_integer("year", 2015, "year data set [2014]")
-    # tf.app.flags.DEFINE_integer('embedding_dim', 300, 'dimension of word embedding')
-    # tf.app.flags.DEFINE_integer('batch_size', 20, 'number of example per batch')
-    # tf.app.flags.DEFINE_integer('n_hidden', 300, 'number of hidden unit')
-    # tf.app.flags.DEFINE_float('learning_rate', 0.07, 'learning rate')
-    # tf.app.flags.DEFINE_integer('n_class', 3, 'number of distinct class')
-    # tf.app.flags.DEFINE_integer('max_sentence_len', 80, 'max number of tokens per sentence')
-    # tf.app.flags.DEFINE_integer('max_doc_len', 20, 'max number of tokens per sentence')
-    # tf.app.flags.DEFINE_float('l2_reg', 0.00001, 'l2 regularization')
-    # tf.app.flags.DEFINE_float('random_base', 0.01, 'initial random base')
-    # tf.app.flags.DEFINE_integer('display_step', 4, 'number of test display step')
-    # tf.app.flags.DEFINE_integer('n_iter', 50, 'number of train iter')
-    # tf.app.flags.DEFINE_float('keep_prob1', 0.5, 'dropout keep prob')
-    # tf.app.flags.DEFINE_float('keep_prob2', 0.5, 'dropout keep prob')
-    # tf.app.flags.DEFINE_string('t1', 'last', 'type of hidden output')
-    # tf.app.flags.DEFINE_string('t2', 'last', 'type of hidden output')
-    # tf.app.flags.DEFINE_integer('n_layer', 3, 'number of stacked rnn')
-    # tf.app.flags.DEFINE_string('is_r', '1', 'prob')
-    # tf.app.flags.DEFINE_integer('max_target_len', 19, 'max target length')
+    # classifier to compute word relevance
+    LASSO_regression = True
+    prediction_difference = False

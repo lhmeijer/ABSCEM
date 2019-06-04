@@ -6,8 +6,9 @@ from neural_network_layers.attention_layers import cam_mlp_attention_layer, trip
 
 class CABASCModel(NeuralLanguageModel):
 
-    def __init__(self, config):
+    def __init__(self, config, internal_data_loader):
         self.config = config
+        self.internal_data_loader = internal_data_loader
 
     def model_itself(self, left_sentence_part, right_sentence_part, target_part):
 

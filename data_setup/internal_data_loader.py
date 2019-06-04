@@ -8,6 +8,7 @@ class InternalDataLoader:
     def __init__(self, config):
         self.config = config
 
+        self.total_word_in_training = []
         self.lemmatized_training = []
         self.word_embeddings_training_all = []
         self.word_embeddings_training_only = []
@@ -21,10 +22,11 @@ class InternalDataLoader:
         self.polarity_matrix_training = []
         self.categories_matrix_training = []
 
+        self.total_word_in_test = []
         self.lemmatized_test = []
         self.word_embeddings_test_all = []
         self.word_embeddings_test_only = []
-        self.bag_of_words_test= []
+        self.bag_of_words_test = []
         self.part_of_speech_test = []
         self.negation_in_test = []
         self.word_mentions_test = []
@@ -48,6 +50,8 @@ class InternalDataLoader:
                 self.negation_in_training.append(sentence['word_negations'])
 
                 for n_aspects in range(len(sentence['aspects'])):
+                    number_of_words = sentence['lemmatized_sentence']
+                    self.total_word_in_training.append(number_of_words)
                     self.lemmatized_training.append(sentence['lemmatized_sentence'])
                     self.word_embeddings_training_all.append(sentence['word_embeddings'])
                     self.bag_of_words_training.append(sentence['bag_of_words'])
@@ -72,6 +76,8 @@ class InternalDataLoader:
                 self.negation_in_test.append(sentence['word_negations'])
 
                 for n_aspects in range(len(sentence['aspects'])):
+                    number_of_words = sentence['lemmatized_sentence']
+                    self.total_word_in_test.append(number_of_words)
                     self.lemmatized_test.append(sentence['lemmatized_sentence'])
                     self.word_embeddings_test_all.append(sentence['word_embeddings'])
                     self.bag_of_words_test.append(sentence['bag_of_words'])
@@ -102,3 +108,58 @@ class InternalDataLoader:
             test_indices[i] = a_range[number_training_data:number_entire_data]
 
         return training_indices, test_indices
+
+    def split_training_embeddings_in_left_target_right(self):
+
+        number_of_sentences = np.shape(self.word_embeddings_training_all)
+
+        left_part = np.zeros((number_of_sentences[0], self.config.max_sentence_length))
+        right_part = np.zeros((number_of_sentences[0], self.config.max_sentence_length))
+        target_part = np.zeros((number_of_sentences[0], self.config.max_target_length))
+
+        words_in_left_context = np.zeros(number_of_sentences[0])
+        words_in_target = np.zeros(number_of_sentences[0])
+        words_in_right_context = np.zeros(number_of_sentences[0])
+
+        for index in range(number_of_sentences[0]):
+
+            begin_index_aspect = self.aspect_indices_training[index][0]
+            end_index_aspect = self.aspect_indices_training[index][-1]
+
+            words_in_left_context[index] = begin_index_aspect
+            words_in_target[index] = end_index_aspect - begin_index_aspect + 1
+            words_in_right_context[index] = self.total_word_in_training[index] - end_index_aspect + 1
+
+            left_part[index][:words_in_left_context] = self.word_embeddings_training_all[index][0:begin_index_aspect]
+            target_part[index][:words_in_target] = self.word_embeddings_training_all[index][begin_index_aspect:end_index_aspect + 1]
+            right_part[index][:words_in_right_context] = self.word_embeddings_training_all[index][end_index_aspect + 1:self.total_word_in_training[index]]
+
+        return left_part, target_part, right_part, words_in_left_context, words_in_target, words_in_right_context
+
+    def split_test_embeddings_in_left_target_right(self):
+
+        number_of_sentences = np.shape(self.word_embeddings_test_all)
+
+        left_part = np.zeros((number_of_sentences[0], self.config.max_sentence_length))
+        right_part = np.zeros((number_of_sentences[0], self.config.max_sentence_length))
+        target_part = np.zeros((number_of_sentences[0], self.config.max_target_length))
+
+        words_in_left_context = np.zeros(number_of_sentences[0])
+        words_in_target = np.zeros(number_of_sentences[0])
+        words_in_right_context = np.zeros(number_of_sentences[0])
+
+        for index in range(number_of_sentences[0]):
+
+            begin_index_aspect = self.aspect_indices_test[index][0]
+            end_index_aspect = self.aspect_indices_test[index][-1]
+
+            words_in_left_context[index] = begin_index_aspect
+            words_in_target[index] = end_index_aspect - begin_index_aspect + 1
+            words_in_right_context[index] = self.total_word_in_test[index] - end_index_aspect + 1
+
+            left_part[index][:words_in_left_context] = self.word_embeddings_test_all[index][0:begin_index_aspect]
+            target_part[index][:words_in_target] = self.word_embeddings_test_all[index][begin_index_aspect:end_index_aspect + 1]
+            right_part[index][:words_in_right_context] = self.word_embeddings_test_all[index][end_index_aspect + 1:self.total_word_in_test[index]]
+
+        return left_part, target_part, right_part, words_in_left_context, words_in_target, words_in_right_context
+
