@@ -143,3 +143,24 @@ class InternalDataLoader:
         np.random.shuffle(index)
         for i in range(int(length / batch_size) + (1 if length % batch_size else 0)):
             yield index[i * batch_size:(i + 1) * batch_size]
+
+    def read_remaining_data(self, is_cross_val):
+
+        if is_cross_val:
+
+            if not os.path.isfile(self.config.remaining_data_cross_val):
+                raise ("[!] Remaining cross val data set is not found, please run the ontology beforehand")
+
+            with open(self.config.remaining_data_cross_val, 'r') as file:
+                for line in file:
+                    line = json.loads(line)
+                    return np.array(line['cross_val_indices'])
+        else:
+
+            if not os.path.isfile(self.config.remaining_data):
+                raise ("Remaining dataset is not found, please run the ontology beforehand")
+
+            with open(self.config.remaining_data, 'r') as file:
+                for line in file:
+                    line = json.loads(line)
+                    return np.array(line['test_set_indices'])

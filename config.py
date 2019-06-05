@@ -16,6 +16,9 @@ class Config:
     internal_train_data = "data/internal_data/restaurant_train_" + str(year) + ".json"
     internal_test_data = "data/internal_data/restaurant_test_" + str(year) + ".json"
 
+    remaining_data = "data/internal_data/remaining_indices_ontology_" + str(year) + ".json"
+    remaining_data_cross_val = "data/internal_data/remaining_indices_ontology_cross_val_" + str(year) + ".json"
+
     glove_embeddings = "data/external_data/glove.42B." + str(embedding_dimension) + "d.txt"
 
 
@@ -24,7 +27,6 @@ class OntologyConfig(Config):
     name_of_model = "ontology_reasoner"
     cross_validation_rounds = 10
     file_of_results = "results/abs_classifiers/ontology_reasoner_" + str(Config.year) + ".json"
-    remaining_data = "data/internal_data/remaining_indices_ontology_" + str(Config.year) + ".json"
 
 
 class SVMConfig(Config):
@@ -66,6 +68,8 @@ class CabascConfig(NeuralLanguageModelConfig):
     keep_prob2 = 0.5
     random_base = 0.01
     cross_validation_rounds = 10
+
+    use_of_ontology = False
 
     file_of_results = "results/abs_classifiers/CABASC_model_" + str(Config.year) + ".json"
     file_to_save_model = "data/model_savings/CABASC_model_" + str(Config.year) + "_tf.model"

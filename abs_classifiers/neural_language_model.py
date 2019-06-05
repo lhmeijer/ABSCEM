@@ -1,4 +1,5 @@
 import tensorflow as tf
+import json
 
 
 class NeuralLanguageModel:
@@ -67,49 +68,65 @@ class NeuralLanguageModel:
                     }
                     yield feed_dict, len(index)
 
+            max_test_acc = 0.
+
             for i in range(self.config.number_of_iterations):
-                for train, _ in get_batch_data(tr_left_part, tr_left_sen_len, tr_right_part, te_right_sen_len,
+
+                train_acc, train_cnt = 0., 0
+
+                for train, train_num in get_batch_data(tr_left_part, tr_left_sen_len, tr_right_part, te_right_sen_len,
                                                y_train, tr_target_part,tr_tar_len, self.config.batch_size):
-                    _ = session.run([train_optimizer], feed_dict=train)
+                    _, step, _train_acc = session.run([train_optimizer, global_step, acc_num], feed_dict=train)
+                    train_acc += _train_acc
+                    train_cnt += train_num
+
+                test_acc, test_cost, test_cnt = 0., 0., 0
+                true_y_s, pred_y_s, prob_s = [], [], []
+                for test, test_num in get_batch_data(te_left_part, te_left_sen_len, te_right_part, te_right_sen_len, y_test,
+                                            te_target_part, te_tar_len, 1):
+                    _loss, _test_acc, _true_y, _pred_y, _prob = session.run([loss, acc_num, true_y, pred_y, self.prob],
+                                                                            feed_dict=test)
+                    true_y_s.append(_true_y)
+                    pred_y_s.append(_pred_y)
+                    prob_s.append(_prob)
+                    test_acc += _test_acc
+                    test_cost += _loss * test_num
+                    test_cnt += test_num
+
+                print('all samples={}, correct prediction={}'.format(test_cnt, test_acc))
+                train_acc = train_acc / train_cnt
+                test_acc = test_acc / test_cnt
+                test_cost = test_cost / test_cnt
+                print('Iter {}: mini-batch loss={:.6f}, train acc={:.6f}, test acc={:.6f}'.format(i, test_cost, train_acc, test_acc))
+
+                if test_acc > max_test_acc:
+                    max_test_acc = test_acc
+                    results = {
+                        'classification model': self.config.name_of_model,
+                        'n_in_training_sample': train_cnt,
+                        'n_in_test_sample': test_cnt,
+                        'max_test_acc': test_acc,
+                        'train_acc': train_acc,
+                        'true_y': true_y_s,
+                        'pred_y': pred_y_s,
+                        'prob': prob_s,
+                        'iteration': i,
+                        'number_of_iterations': self.config.number_of_iterations,
+                        'learning_rate': self.config.learning_rate,
+                        'batch_size': self.config.batch_size,
+                        'L2_regularization': self.config.l2_regularization,
+                        'number_hidden_units': self.config.number_hidden_units
+                    }
 
             self.saver.save(session, self.config.file_to_save_model)
 
-            acc, cost, cnt = 0., 0., 0
-            fw, bw, tl, tr, ty, py = [], [], [], [], [], []
-            p = []
-            for test, num in get_batch_data(te_left_part, te_left_sen_len, te_right_part, te_right_sen_len, y_test,
-                                            te_target_part, te_tar_len, 1):
-                _loss, _acc, _ty, _py, _p = session.run([loss, acc_num, true_y, pred_y, self.prob], feed_dict=test)
-                ty += list(_ty)
-                py += list(_py)
-                p += list(_p)
-                acc += _acc
-                cost += _loss * num
-                cnt += num
-        print
-        'all samples={}, correct prediction={}'.format(cnt, acc)
-        acc = acc / cnt
-        cost = cost / cnt
-        print
-        'Iter {}: mini-batch loss={:.6f}, test acc={:.6f}'.format(i, cost, acc)
-        summary = sess.run(test_summary_op, feed_dict={test_loss: cost, test_acc: acc})
-        test_summary_writer.add_summary(summary, step)
-        if acc > max_acc:
-            max_acc = acc
-            max_fw = fw
-            max_bw = bw
-            max_tl = tl
-            max_tr = tr
-            max_ty = ty
-            max_py = py
-            max_prob = p
+            return results
 
     def predict(self, x, x_aspect):
 
         x_left_part, x_target_part, x_right_part, x_left_sen_len, x_tar_len, x_right_sen_len = \
             self.internal_data_loader.split_test_embeddings_in_left_target_right(x, x_aspect,
                                                 self.config.max_sentence_length, self.config.max_target_length)
-
         feed_dict = {
             self.left_part: x_left_part,
             self.right_part: x_right_part,
@@ -125,25 +142,7 @@ class NeuralLanguageModel:
             predictions, layer_information = session.run([self.prob, self.layer_information], feed_dict=feed_dict)
         return predictions, layer_information
 
-
     def run(self):
-
-        results = {
-            'classification model': self.config.name_of_model,
-            'size_of_training_set': len(self.internal_data_loader.lemmatized_training),
-            'size_of_test_set': len(self.internal_data_loader.lemmatized_test),
-            'size_of_cross_validation_sets': 0,
-            'out_of_sample_accuracy_majority': 0,
-            'in_sample_accuracy_majority': 0,
-            'cross_val_accuracy_majority': [],
-            'cross_val_mean_accuracy_majority': "cross validation is switched off",
-            'cross_val_stdeviation_majority': "cross validation is switched off",
-            'out_of_sample_accuracy_with_backup': "No backup model is used for ontology reasoner",
-            'in_sample_accuracy_with_backup': "No backup model is used for ontology reasoner",
-            'cross_val_accuracy_with_backup': [],
-            'cross_val_mean_accuracy_with_backup': "cross validation is switched off",
-            'cross_val_stdeviation_with_backup': "cross validation is switched off"
-        }
 
         x_train = self.internal_data_loader.word_embeddings_training_all
         train_aspects = self.internal_data_loader.aspect_indices_training
@@ -153,21 +152,47 @@ class NeuralLanguageModel:
         test_aspects = self.internal_data_loader.aspect_indices_test
         y_test = self.internal_data_loader.polarity_matrix_test
 
+        results = None
+
         if self.config.cross_validation:
 
             training_indices, test_indices = self.internal_data_loader.get_random_indices_for_cross_validation(
                 self.config.cross_validation_rounds, x_train.shape[0])
 
+            results = {}
+
             for i in range(self.config.cross_validation_rounds):
 
-                acc = self.fit(x_train=x_train[training_indices[i]], y_train=y_train[training_indices[i]],
-                               train_aspects=train_aspects[training_indices[i]], x_test=x_train[test_indices[i]],
-                               y_test=y_train[test_indices[i]], test_aspects=train_aspects[test_indices[i]])
+                x_train = x_train[training_indices[i]]
+                y_train = y_train[training_indices[i]]
+                train_aspects = train_aspects[training_indices[i]]
+                x_test = x_train[test_indices[i]]
+                y_test = y_train[test_indices[i]]
+                test_aspects = train_aspects[test_indices[i]]
+
+                if self.config.use_of_ontology:
+                    remaining_indices = self.internal_data_loader.read_remaining_data(is_cross_val=True)
+                    x_test = x_test[remaining_indices]
+                    y_test = y_test[remaining_indices]
+                    test_aspects = test_aspects[remaining_indices]
+
+                result = self.fit(x_train=x_train, y_train=y_train, train_aspects=train_aspects, x_test=x_test,
+                                   y_test=y_test, test_aspects=test_aspects)
+                results['cross_validation_' + str(i)] = result
 
         else:
 
-            acc = self.fit(x_train=x_train, y_train=y_train, train_aspects=train_aspects, x_test=x_test,
+            if self.config.use_of_ontology:
+
+                remaining_indices = self.internal_data_loader.read_remaining_data(is_cross_val=False)
+                x_test = x_test[remaining_indices]
+                y_test = y_test[remaining_indices]
+                test_aspects = test_aspects[remaining_indices]
+
+            results = self.fit(x_train=x_train, y_train=y_train, train_aspects=train_aspects, x_test=x_test,
                            y_test=y_test, test_aspects=test_aspects)
 
+        with open(self.config.file_of_results, 'w') as outfile:
+            json.dump(results, outfile, ensure_ascii=False)
 
 
