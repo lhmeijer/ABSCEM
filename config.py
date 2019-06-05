@@ -6,7 +6,7 @@ class Config:
     year = 2015
     embedding_dimension = 300
     hybrid = False
-    cross_validation_percentage_training = 0.8
+    cross_validation_percentage = 0.8
     cross_validation = False
     seed = 100
 

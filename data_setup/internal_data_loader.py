@@ -88,61 +88,34 @@ class InternalDataLoader:
                     self.polarity_matrix_test.append(sentence['polarity_matrix'][n_aspects])
                     self.categories_matrix_test.append(sentence['category_matrix'][n_aspects])
 
-    def get_random_indices_for_cross_validation(self, cross_validation_rounds):
+    def get_random_indices_for_cross_validation(self, cross_validation_rounds, size_of_dataset):
 
         np.random.seed(self.config.seed)
 
-        number_entire_data = len(self.word_embeddings_training_all)
-        number_training_data = self.config.cross_validation_percentage_training * number_entire_data
-        number_test_data = number_entire_data - number_training_data
+        number_training_data = np.int(self.config.cross_validation_percentage * size_of_dataset)
+        number_test_data = size_of_dataset - number_training_data
 
         training_indices = np.zeros(cross_validation_rounds, number_training_data)
         test_indices = np.zeros(cross_validation_rounds, number_test_data)
 
         for i in range(cross_validation_rounds):
 
-            a_range = np.arange(0, number_entire_data)
+            a_range = np.arange(0, size_of_dataset)
             np.random.shuffle(a_range)
 
             training_indices[i] = a_range[:number_training_data]
-            test_indices[i] = a_range[number_training_data:number_entire_data]
+            test_indices[i] = a_range[number_training_data:size_of_dataset]
 
         return training_indices, test_indices
 
-    def split_training_embeddings_in_left_target_right(self):
+    @staticmethod
+    def split_embeddings_in_left_target_right(word_embeddings, aspect_indices, max_sentence_length, max_target_length):
 
-        number_of_sentences = np.shape(self.word_embeddings_training_all)
+        number_of_sentences = np.shape(word_embeddings)
 
-        left_part = np.zeros((number_of_sentences[0], self.config.max_sentence_length))
-        right_part = np.zeros((number_of_sentences[0], self.config.max_sentence_length))
-        target_part = np.zeros((number_of_sentences[0], self.config.max_target_length))
-
-        words_in_left_context = np.zeros(number_of_sentences[0])
-        words_in_target = np.zeros(number_of_sentences[0])
-        words_in_right_context = np.zeros(number_of_sentences[0])
-
-        for index in range(number_of_sentences[0]):
-
-            begin_index_aspect = self.aspect_indices_training[index][0]
-            end_index_aspect = self.aspect_indices_training[index][-1]
-
-            words_in_left_context[index] = begin_index_aspect
-            words_in_target[index] = end_index_aspect - begin_index_aspect + 1
-            words_in_right_context[index] = self.total_word_in_training[index] - end_index_aspect + 1
-
-            left_part[index][:words_in_left_context] = self.word_embeddings_training_all[index][0:begin_index_aspect]
-            target_part[index][:words_in_target] = self.word_embeddings_training_all[index][begin_index_aspect:end_index_aspect + 1]
-            right_part[index][:words_in_right_context] = self.word_embeddings_training_all[index][end_index_aspect + 1:self.total_word_in_training[index]]
-
-        return left_part, target_part, right_part, words_in_left_context, words_in_target, words_in_right_context
-
-    def split_test_embeddings_in_left_target_right(self):
-
-        number_of_sentences = np.shape(self.word_embeddings_test_all)
-
-        left_part = np.zeros((number_of_sentences[0], self.config.max_sentence_length))
-        right_part = np.zeros((number_of_sentences[0], self.config.max_sentence_length))
-        target_part = np.zeros((number_of_sentences[0], self.config.max_target_length))
+        left_part = np.zeros((number_of_sentences[0], max_sentence_length))
+        right_part = np.zeros((number_of_sentences[0], max_sentence_length))
+        target_part = np.zeros((number_of_sentences[0], max_target_length))
 
         words_in_left_context = np.zeros(number_of_sentences[0])
         words_in_target = np.zeros(number_of_sentences[0])
@@ -150,16 +123,23 @@ class InternalDataLoader:
 
         for index in range(number_of_sentences[0]):
 
-            begin_index_aspect = self.aspect_indices_test[index][0]
-            end_index_aspect = self.aspect_indices_test[index][-1]
+            begin_index_aspect = aspect_indices[index][0]
+            end_index_aspect = aspect_indices[index][-1]
 
             words_in_left_context[index] = begin_index_aspect
             words_in_target[index] = end_index_aspect - begin_index_aspect + 1
-            words_in_right_context[index] = self.total_word_in_test[index] - end_index_aspect + 1
+            words_in_right_context[index] = max_sentence_length - end_index_aspect + 1
 
-            left_part[index][:words_in_left_context] = self.word_embeddings_test_all[index][0:begin_index_aspect]
-            target_part[index][:words_in_target] = self.word_embeddings_test_all[index][begin_index_aspect:end_index_aspect + 1]
-            right_part[index][:words_in_right_context] = self.word_embeddings_test_all[index][end_index_aspect + 1:self.total_word_in_test[index]]
+            left_part[index][:words_in_left_context] = word_embeddings[index][0:begin_index_aspect]
+            target_part[index][:words_in_target] = word_embeddings[index][begin_index_aspect:end_index_aspect + 1]
+            right_part[index][:words_in_right_context] = word_embeddings[index][end_index_aspect + 1:]
 
         return left_part, target_part, right_part, words_in_left_context, words_in_target, words_in_right_context
 
+    def batch_index(self, length, batch_size):
+
+        index = np.arange(length)
+        np.random.seed(self.config.seed)
+        np.random.shuffle(index)
+        for i in range(int(length / batch_size) + (1 if length % batch_size else 0)):
+            yield index[i * batch_size:(i + 1) * batch_size]

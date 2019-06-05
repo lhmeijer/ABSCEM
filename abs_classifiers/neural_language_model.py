@@ -9,67 +9,120 @@ class NeuralLanguageModel:
 
     def model_itself(self, left_sentence_parts, left_sentence_lengths, right_sentence_parts, right_sentence_lengths,
                      target_parts, target_lengths):
-        pass
+        return None, None
 
-    def fit(self):
+    def fit(self, x_train, y_train, train_aspects, x_test, y_test, test_aspects):
 
-        # left_part, target_part, right_part, left_sen_len, tar_len, right_sen_len = \
-        #     self.internal_data_loader.split_training_embeddings_in_left_target_right()
-        #
-        # y = self.internal_data_loader.polarity_matrix_training
+        self.left_part = tf.placeholder(tf.int32, [None, self.config.max_sentence_length])
+        self.left_sen_len = tf.placeholder(tf.int32, None)
 
-        left_part = tf.placeholder(tf.int32, [None, self.config.max_sentence_length])
-        left_sen_len = tf.placeholder(tf.int32, None)
+        self.right_part = tf.placeholder(tf.int32, [None, self.config.max_sentence_length])
+        self.right_sen_len = tf.placeholder(tf.int32, [None])
 
-        right_part = tf.placeholder(tf.int32, [None, self.config.max_sentence_length])
-        right_sen_len = tf.placeholder(tf.int32, [None])
-
-        target_part = tf.placeholder(tf.int32, [None, self.config.max_target_length])
-        tar_len = tf.placeholder(tf.int32, [None])
+        self.target_part = tf.placeholder(tf.int32, [None, self.config.max_target_length])
+        self.tar_len = tf.placeholder(tf.int32, [None])
 
         y = tf.placeholder(tf.float32, [None, self.config.number_of_classes])
 
-        pred_optimizer = self.model_itself(left_sentence_parts=left_part, left_sentence_lengths=left_sen_len,
-                                           right_sentence_parts=right_part, right_sentence_lengths=right_sen_len,
-                                           target_parts=target_part, target_lengths=tar_len)
+        self.prob, self.layer_information = self.model_itself(left_sentence_parts=self.left_part, left_sentence_lengths=self.left_sen_len,
+                                    right_sentence_parts=self.right_part, right_sentence_lengths=self.right_sen_len,
+                                    target_parts=self.target_part, target_lengths=self.tar_len)
 
-        loss = self.config.loss_function(y, pred_optimizer)
-        acc = self.config.accuracy_function(y, pred_optimizer)
+        loss = self.config.loss_function(y, self.prob)
+        acc_num, acc_prob = self.config.accuracy_function(y, self.prob)
 
+        global_step = tf.Variable(0, name='tr_global_step', trainable=False)
         optimizer = tf.train.MomentumOptimizer(learning_rate=self.config.learning_rate, momentum=self.config.momentum)
-        train_optimizer = optimizer.minimize(loss)
+        train_optimizer = optimizer.minimize(loss, global_step=global_step)
 
-        self.saver = tf.train.Saver()
+        true_y = tf.argmax(y, 1)
+        pred_y = tf.argmax(self.prob, 1)
 
         init = tf.global_variables_initializer()
 
+        self.saver = tf.train.Saver()
+
         with tf.Session() as session:
+
             session.run(init)
 
+            tr_left_part, tr_target_part, tr_right_part, tr_left_sen_len, tr_tar_len, tr_right_sen_len = \
+                self.internal_data_loader.split_embeddings_in_left_target_right(x_train, train_aspects,
+                                                self.config.max_sentence_length, self.config.max_target_length)
+
+            te_left_part, te_target_part, te_right_part, te_left_sen_len, te_tar_len, te_right_sen_len = \
+                self.internal_data_loader.split_embeddings_in_left_target_right(x_test, test_aspects,
+                                                self.config.max_sentence_length, self.config.max_target_length)
+
+            def get_batch_data(x_left, len_left, x_right, len_right, yi, x_target, len_target, batch_size):
+                for index in self.internal_data_loader.batch_index(len(yi), batch_size):
+                    feed_dict = {
+                        self.left_part: x_left[index],
+                        self.right_part: x_right[index],
+                        y: yi[index],
+                        self.left_sen_len: len_left[index],
+                        self.right_sen_len: len_right[index],
+                        self.target_part: x_target[index],
+                        self.tar_len: len_target[index],
+                    }
+                    yield feed_dict, len(index)
+
             for i in range(self.config.number_of_iterations):
-                for j in range(n_batches):
-                    Xbatch = X[j * batch_sz:(j * batch_sz + batch_sz), ]
-                    Ybatch = Y[j * batch_sz:(j * batch_sz + batch_sz), ]
+                for train, _ in get_batch_data(tr_left_part, tr_left_sen_len, tr_right_part, te_right_sen_len,
+                                               y_train, tr_target_part,tr_tar_len, self.config.batch_size):
+                    _ = session.run([train_optimizer], feed_dict=train)
 
-                    session.run(train_op, feed_dict={self.inputs: Xbatch, self.targets: Ybatch})
-                    if j % 200 == 0:
-                        test_cost = session.run(cost, feed_dict={self.inputs: Xtest, self.targets: Ytest})
-                        Ptest = session.run(self.predict_op, feed_dict={self.inputs: Xtest})
-                        err = error_rate(Ptest, Ytest)
-                        print("Cost / err at iteration i=%d, j=%d: %.3f / %.3f" % (i, j, test_cost, err))
-
-            # save the model
             self.saver.save(session, self.config.file_to_save_model)
 
-        # save dimensions for later
-        self.D = D
-        self.K = K
+            acc, cost, cnt = 0., 0., 0
+            fw, bw, tl, tr, ty, py = [], [], [], [], [], []
+            p = []
+            for test, num in get_batch_data(te_left_part, te_left_sen_len, te_right_part, te_right_sen_len, y_test,
+                                            te_target_part, te_tar_len, 1):
+                _loss, _acc, _ty, _py, _p = session.run([loss, acc_num, true_y, pred_y, self.prob], feed_dict=test)
+                ty += list(_ty)
+                py += list(_py)
+                p += list(_p)
+                acc += _acc
+                cost += _loss * num
+                cnt += num
+        print
+        'all samples={}, correct prediction={}'.format(cnt, acc)
+        acc = acc / cnt
+        cost = cost / cnt
+        print
+        'Iter {}: mini-batch loss={:.6f}, test acc={:.6f}'.format(i, cost, acc)
+        summary = sess.run(test_summary_op, feed_dict={test_loss: cost, test_acc: acc})
+        test_summary_writer.add_summary(summary, step)
+        if acc > max_acc:
+            max_acc = acc
+            max_fw = fw
+            max_bw = bw
+            max_tl = tl
+            max_tr = tr
+            max_ty = ty
+            max_py = py
+            max_prob = p
 
-    def predict(self, prediction_data):
+    def predict(self, x, x_aspect):
+
+        x_left_part, x_target_part, x_right_part, x_left_sen_len, x_tar_len, x_right_sen_len = \
+            self.internal_data_loader.split_test_embeddings_in_left_target_right(x, x_aspect,
+                                                self.config.max_sentence_length, self.config.max_target_length)
+
+        feed_dict = {
+            self.left_part: x_left_part,
+            self.right_part: x_right_part,
+            self.left_sen_len: x_left_sen_len,
+            self.right_sen_len: x_right_sen_len,
+            self.target_part: x_target_part,
+            self.tar_len: x_tar_len,
+        }
+
         with tf.Session() as session:
             # restore the model
             self.saver.restore(session, self.config.file_to_save_model)
-            predictions, layer_information = session.run(self.predict_op, feed_dict={self.inputs: prediction_data})
+            predictions, layer_information = session.run([self.prob, self.layer_information], feed_dict=feed_dict)
         return predictions, layer_information
 
 
@@ -92,72 +145,29 @@ class NeuralLanguageModel:
             'cross_val_stdeviation_with_backup': "cross validation is switched off"
         }
 
+        x_train = self.internal_data_loader.word_embeddings_training_all
+        train_aspects = self.internal_data_loader.aspect_indices_training
+        y_train = self.internal_data_loader.polarity_matrix_training
 
+        x_test = self.internal_data_loader.word_embeddings_test_all
+        test_aspects = self.internal_data_loader.aspect_indices_test
+        y_test = self.internal_data_loader.polarity_matrix_test
 
+        if self.config.cross_validation:
 
-        prediction = self.model_itself(left_sentence_part=left_part, right_sentence_part=right_part, target_part=target_part)
-        loss = self.config.loss_function(y, prediction)
-        acc = self.config.accuracy_function(y, prediction)
+            training_indices, test_indices = self.internal_data_loader.get_random_indices_for_cross_validation(
+                self.config.cross_validation_rounds, x_train.shape[0])
 
-        optimizer = tf.train.MomentumOptimizer(learning_rate=self.config.learning_rate, momentum=self.config.momentum)
-        trainer = optimizer.minimize(loss)
+            for i in range(self.config.cross_validation_rounds):
 
-        saver = tf.train.Saver()
+                acc = self.fit(x_train=x_train[training_indices[i]], y_train=y_train[training_indices[i]],
+                               train_aspects=train_aspects[training_indices[i]], x_test=x_train[test_indices[i]],
+                               y_test=y_train[test_indices[i]], test_aspects=train_aspects[test_indices[i]])
 
-        init_opt = tf.global_variables_initializer()
+        else:
 
-        with tf.Session() as sess:
-
-            sess.run(init_opt)
-            save_path = saver.save(sess, "/tmp/model.ckpt")
-            print("Model saved in path: %s" % save_path)
-
-            # def get_batch_data(x_f, sen_len_f, x_b, sen_len_b, yi, target, tl, batch_size, kp1, kp2, is_shuffle=True):
-            #     for index in batch_index(len(yi), batch_size, 1, is_shuffle):
-            #         feed_dict = {
-            #             x: x_f[index],
-            #             x_bw: x_b[index],
-            #             y: yi[index],
-            #             sen_len: sen_len_f[index],
-            #             sen_len_bw: sen_len_b[index],
-            #             target_words: target[index],
-            #             tar_len: tl[index],
-            #             keep_prob1: kp1,
-            #             keep_prob2: kp2,
-            #         }
-            #         yield feed_dict, len(index)
-
-            for i in range(self.config.number_of_iterations):
-                for train, _ in get_batch_data(tr_x, tr_sen_len, tr_x_bw, tr_sen_len_bw, tr_y, tr_target_word,
-                                               tr_tar_len,
-                                               FLAGS.batch_size, FLAGS.keep_prob1, FLAGS.keep_prob2):
-                    _ = sess.run([trainer], feed_dict=train)
-
-            acc, cost, cnt = 0., 0., 0
-            fw, bw, tl, tr, ty, py = [], [], [], [], [], []
-            p = []
-            for test, num in get_batch_data(te_x, te_sen_len, te_x_bw, te_sen_len_bw, te_y,
-                                            te_target_word, te_tar_len, 2000, 1.0, 1.0, False):
-                if FLAGS.method == 'TD-ATT' or FLAGS.method == 'IAN':
-                    _loss, _acc, _fw, _bw, _tl, _tr, _ty, _py, _p = sess.run(
-                        [loss, acc_num, alpha_fw, alpha_bw, alpha_t_l, alpha_t_r, true_y, pred_y, prob], feed_dict=test)
-                    fw += list(_fw)
-                    bw += list(_bw)
-                    tl += list(_tl)
-                    tr += list(_tr)
-                else:
-                    _loss, _acc, _ty, _py, _p = sess.run([loss, acc_num, true_y, pred_y, prob], feed_dict=test)
-                ty += list(_ty)
-                py += list(_py)
-                p += list(_p)
-                acc += _acc
-                cost += _loss * num
-                cnt += num
-            print
-            'all samples={}, correct prediction={}'.format(cnt, acc)
-            acc = acc / cnt
-            cost = cost / cnt
-
+            acc = self.fit(x_train=x_train, y_train=y_train, train_aspects=train_aspects, x_test=x_test,
+                           y_test=y_test, test_aspects=test_aspects)
 
 
 
