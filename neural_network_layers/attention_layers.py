@@ -8,32 +8,32 @@ def softmax_with_len(inputs, length, max_len):
     length = tf.reshape(length, [-1])
     mask = tf.reshape(tf.cast(tf.sequence_mask(length, max_len), tf.float32), tf.shape(inputs))
     inputs *= mask
-    _sum = tf.reduce_sum(inputs, reduction_indices=-1, keep_dims=True) + 1e-9
+    _sum = tf.reduce_sum(inputs, reduction_indices=-1, keepdims=True) + 1e-9
     return inputs / _sum
 
 
-def attention_function(hidden_states, context_representation, length, l2_reg, random_base, layer_id):
+def attention_function(hidden_states, context_representation, length, max_length, batch_size, n_hidden, l2_reg, random_base, layer_id):
 
-    batch_size = tf.shape(hidden_states)[0]
     number_of_words = tf.shape(hidden_states)[1]
     word_dimension = tf.shape(hidden_states)[2]
+
     w = tf.get_variable(
         name='att_w_' + str(layer_id),
-        shape=[word_dimension, word_dimension],
+        shape=[n_hidden, n_hidden],
         initializer=tf.random_uniform_initializer(-random_base, random_base),
         regularizer=tf.contrib.layers.l2_regularizer(l2_reg)
     )
     b = tf.get_variable(
         name='att_b' + str(layer_id),
-        shape=[number_of_words*batch_size],
+        shape=[batch_size, max_length, 1],
         initializer=tf.random_uniform_initializer(-0., 0.),
-        regularizer=tf.contrib.layers.l2_regularizer(l2_reg)
+        regularizer=tf.contrib.layers.l2_regularizer(scale=l2_reg)
     )
     reshape_hidden_states = tf.reshape(hidden_states, [-1, word_dimension])
-    transposed_context_representation = tf.transpose(context_representation)
-    tmp = tf.matmul(reshape_hidden_states, w)
-    tmp = tf.tanh(tf.matmul(tmp, transposed_context_representation) + b)
-    tmp = tf.reshape(tmp, [batch_size, 1, number_of_words])
+    tmp = tf.reshape(tf.matmul(reshape_hidden_states, w), [-1, number_of_words, n_hidden])
+    attend = tf.expand_dims(context_representation, 2)
+    tmp = tf.reshape(tf.matmul(tmp, attend), [batch_size, number_of_words, 1])
+    tmp = tf.tanh(tmp + b)
     alpha = softmax_with_len(tmp, length, number_of_words)
     return alpha
 

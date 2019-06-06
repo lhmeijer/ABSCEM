@@ -30,18 +30,18 @@ def main():
     internal_data_loader.load_internal_test_data(load_internal_file_name=Config.internal_test_data)
 
     # Aspect-Based Sentiment Classifiers, which do you want on or off
-    ontology = True
+    ontology = False
     svm = False
     cabasc = False
-    lcr_rot = False
+    lcr_rot = True
     lcr_rot_inverse = False
     lcr_rot_hop = False
 
     # Do you want to run a hybrid model, the ontology reasoner always runs the hybrid form
-    Config.hybrid = False
+    Config.hybrid_method = False
 
     # Do you want to run cross-validation rounds, please specify the cross_validation_round settings in config.py
-    Config.cross_validation = True
+    Config.cross_validation = False
 
     # Diagnostic Classifier, do you want it on or off, please set up the configuration specify in config.py
     diagnostic_classifier = False

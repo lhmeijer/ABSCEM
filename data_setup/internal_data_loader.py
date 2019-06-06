@@ -109,26 +109,6 @@ class InternalDataLoader:
                         self.polarity_matrix_test.append(sentence['polarity_matrix'][n_aspects])
                         self.categories_matrix_test.append(sentence['category_matrix'][n_aspects])
 
-    # def get_random_indices_for_cross_validation(self, cross_validation_rounds, size_of_dataset):
-    #
-    #     np.random.seed(self.config.seed)
-    #
-    #     number_training_data = np.int(self.config.cross_validation_percentage * size_of_dataset)
-    #     number_test_data = size_of_dataset - number_training_data
-    #
-    #     training_indices = np.zeros(cross_validation_rounds, number_training_data)
-    #     test_indices = np.zeros(cross_validation_rounds, number_test_data)
-    #
-    #     for i in range(cross_validation_rounds):
-    #
-    #         a_range = np.arange(0, size_of_dataset)
-    #         np.random.shuffle(a_range)
-    #
-    #         training_indices[i] = a_range[:number_training_data]
-    #         test_indices[i] = a_range[number_training_data:size_of_dataset]
-    #
-    #     return training_indices, test_indices
-
     def setup_cross_val_indices(self, size):
 
         if not os.path.isfile(self.config.cross_validation_indices_training) and not os.path.isfile(self.config.cross_validation_indices_validation):
@@ -186,26 +166,29 @@ class InternalDataLoader:
 
         number_of_sentences = np.shape(word_embeddings)
 
-        left_part = np.zeros((number_of_sentences[0], max_sentence_length))
-        right_part = np.zeros((number_of_sentences[0], max_sentence_length))
-        target_part = np.zeros((number_of_sentences[0], max_target_length))
+        left_part = np.zeros((number_of_sentences[0], max_sentence_length, 300))
+        right_part = np.zeros((number_of_sentences[0], max_sentence_length, 300))
+        target_part = np.zeros((number_of_sentences[0], max_target_length, 300))
 
-        words_in_left_context = np.zeros(number_of_sentences[0])
-        words_in_target = np.zeros(number_of_sentences[0])
-        words_in_right_context = np.zeros(number_of_sentences[0])
+        words_in_left_context = np.zeros(number_of_sentences[0], dtype=int)
+        words_in_target = np.zeros(number_of_sentences[0], dtype=int)
+        words_in_right_context = np.zeros(number_of_sentences[0], dtype=int)
 
         for index in range(number_of_sentences[0]):
 
             begin_index_aspect = aspect_indices[index][0]
             end_index_aspect = aspect_indices[index][-1]
 
-            words_in_left_context[index] = begin_index_aspect
-            words_in_target[index] = end_index_aspect - begin_index_aspect + 1
-            words_in_right_context[index] = max_sentence_length - end_index_aspect + 1
+            np_word_embeddings = np.array(word_embeddings[index])
+            max_embeddings = np_word_embeddings.shape[0]
 
-            left_part[index][:words_in_left_context] = word_embeddings[index][0:begin_index_aspect]
-            target_part[index][:words_in_target] = word_embeddings[index][begin_index_aspect:end_index_aspect + 1]
-            right_part[index][:words_in_right_context] = word_embeddings[index][end_index_aspect + 1:]
+            words_in_left_context[index] = begin_index_aspect
+            words_in_target[index] = (end_index_aspect - begin_index_aspect) + 1
+            words_in_right_context[index] = max_embeddings - (end_index_aspect + 1)
+
+            left_part[index][:words_in_left_context[index]] = np_word_embeddings[0:begin_index_aspect]
+            target_part[index][:words_in_target[index]] = np_word_embeddings[begin_index_aspect:end_index_aspect + 1]
+            right_part[index][:words_in_right_context[index]] = np_word_embeddings[end_index_aspect + 1:]
 
         return left_part, target_part, right_part, words_in_left_context, words_in_target, words_in_right_context
 

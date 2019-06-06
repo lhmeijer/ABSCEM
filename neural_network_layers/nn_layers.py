@@ -167,7 +167,8 @@ def softmax_layer(inputs, n_hidden, random_base, keep_prob, l2_reg, n_class, sco
         regularizer=tf.contrib.layers.l2_regularizer(l2_reg)
     )
     with tf.name_scope('softmax'):
-        outputs = tf.nn.dropout(inputs, keep_prob=keep_prob)
+        rate = 1 - keep_prob
+        outputs = tf.nn.dropout(inputs, rate=rate)
         predict = tf.matmul(outputs, w) + b
         predict = tf.nn.softmax(predict)
     return predict

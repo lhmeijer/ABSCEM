@@ -15,14 +15,14 @@ class NeuralLanguageModel:
 
     def fit(self, x_train, y_train, train_aspects, x_test, y_test, test_aspects):
 
-        self.left_part = tf.placeholder(tf.int32, [None, self.config.max_sentence_length])
-        self.left_sen_len = tf.placeholder(tf.int32, None)
+        self.left_part = tf.placeholder(tf.float32, [self.config.batch_size, self.config.max_sentence_length, self.config.embedding_dimension])
+        self.left_sen_len = tf.placeholder(tf.int32, [self.config.batch_size])
 
-        self.right_part = tf.placeholder(tf.int32, [None, self.config.max_sentence_length])
-        self.right_sen_len = tf.placeholder(tf.int32, [None])
+        self.right_part = tf.placeholder(tf.float32, [self.config.batch_size, self.config.max_sentence_length, self.config.embedding_dimension])
+        self.right_sen_len = tf.placeholder(tf.int32, [self.config.batch_size])
 
-        self.target_part = tf.placeholder(tf.int32, [None, self.config.max_target_length])
-        self.tar_len = tf.placeholder(tf.int32, [None])
+        self.target_part = tf.placeholder(tf.float32, [self.config.batch_size, self.config.max_target_length, self.config.embedding_dimension])
+        self.tar_len = tf.placeholder(tf.int32, [self.config.batch_size])
 
         y = tf.placeholder(tf.float32, [None, self.config.number_of_classes])
 
@@ -75,8 +75,8 @@ class NeuralLanguageModel:
 
                 train_acc, train_cnt = 0., 0
 
-                for train, train_num in get_batch_data(tr_left_part, tr_left_sen_len, tr_right_part, te_right_sen_len,
-                                               y_train, tr_target_part,tr_tar_len, self.config.batch_size):
+                for train, train_num in get_batch_data(tr_left_part, tr_left_sen_len, tr_right_part, tr_right_sen_len,
+                                                       y_train, tr_target_part, tr_tar_len, self.config.batch_size):
                     _, step, _train_acc = session.run([train_optimizer, global_step, acc_num], feed_dict=train)
                     train_acc += _train_acc
                     train_cnt += train_num
@@ -159,6 +159,9 @@ class NeuralLanguageModel:
 
             results = {}
 
+            train_single_accs = list(range(self.config.cross_validation_rounds))
+            validation_single_accs = list(range(self.config.cross_validation_rounds))
+
             for i in range(self.config.cross_validation_rounds):
 
                 x_train_cross = x_train[training_indices[i]]
@@ -168,7 +171,7 @@ class NeuralLanguageModel:
                 y_validation_cross = y_train[validation_indices[i]]
                 validation_aspects_cross = train_aspects[validation_indices[i]]
 
-                if self.config.use_of_ontology:
+                if self.config.hybrid_method:
                     remaining_indices = self.internal_data_loader.read_remaining_data(is_cross_val=True)
                     x_validation_cross = x_validation_cross[remaining_indices]
                     y_validation_cross = y_validation_cross[remaining_indices]
@@ -176,14 +179,21 @@ class NeuralLanguageModel:
 
                 result = self.fit(x_train=x_train_cross, y_train=y_train_cross, train_aspects=train_aspects_cross, x_test=x_validation_cross,
                                    y_test=y_validation_cross, test_aspects=validation_aspects_cross)
+                train_single_accs[i] = result['train_acc']
+                validation_single_accs[i] = result['max_test_acc']
                 results['cross_validation_' + str(i)] = result
+
+            results['mean_accuracy_train_single_acc'] = np.mean(train_single_accs)
+            results['standard_deviation_train_single_acc'] = np.std(train_single_accs)
+            results['mean_accuracy_validation_max_acc'] = np.mean(validation_single_accs)
+            results['standard_deviation_validation_max_acc'] = np.std(validation_single_accs)
 
             with open(self.config.file_of_cross_val_results, 'w') as outfile:
                 json.dump(results, outfile, ensure_ascii=False)
 
         else:
 
-            if self.config.use_of_ontology:
+            if self.config.hybrid_method:
 
                 remaining_indices = self.internal_data_loader.read_remaining_data(is_cross_val=False)
                 x_test = x_test[remaining_indices]

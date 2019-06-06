@@ -311,28 +311,25 @@ class ExternalDataLoader:
                 part_of_speech_sentence[word_indices[i]] = part_of_speech[i]
 
                 if part_of_speech[i].startswith('V'):        # Verb
-                    lemma = wordnet_lemmatizer.lemmatize(words[i], wordnet.VERB)
-                    lemma = spell(lemma)
+                    word = spell(words[i])
+                    lemma = wordnet_lemmatizer.lemmatize(word, wordnet.VERB)
                     lemmatized_sentence[word_indices[i]] = lemma
                 elif part_of_speech[i].startswith('J'):      # Adjective
-                    lemma = wordnet_lemmatizer.lemmatize(words[i], wordnet.ADJ)
-                    if lemma not in punctuations:
-                        lemma = spell(lemma)
+                    word = spell(words[i])
+                    lemma = wordnet_lemmatizer.lemmatize(word, wordnet.ADJ)
                     lemmatized_sentence[word_indices[i]] = lemma
                 elif part_of_speech[i].startswith('R'):      # Adverb
-                    lemma = wordnet_lemmatizer.lemmatize(words[i], wordnet.ADV)
-                    if lemma not in punctuations:
-                        lemma = spell(lemma)
+                    word = spell(words[i])
+                    lemma = wordnet_lemmatizer.lemmatize(word, wordnet.ADV)
                     lemmatized_sentence[word_indices[i]] = lemma
                 elif part_of_speech[i].startswith('N'):      # Noun
-                    lemma = wordnet_lemmatizer.lemmatize(words[i], wordnet.NOUN)
-                    if lemma not in punctuations:
-                        lemma = spell(lemma)
+                    word = spell(words[i])
+                    lemma = wordnet_lemmatizer.lemmatize(word, wordnet.NOUN)
                     lemmatized_sentence[word_indices[i]] = lemma
                 else:                                       # Otherwise
+                    if words[i] not in punctuations:
+                        words[i] = spell(words[i])
                     lemma = wordnet_lemmatizer.lemmatize(words[i])
-                    if lemma not in punctuations:
-                        lemma = spell(lemma)
                     lemmatized_sentence[word_indices[i]] = lemma
 
         print("lemmatized_sentence ", lemmatized_sentence)
