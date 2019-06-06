@@ -1,5 +1,6 @@
 import tensorflow as tf
 import json
+import numpy as np
 
 
 class NeuralLanguageModel:
@@ -144,41 +145,41 @@ class NeuralLanguageModel:
 
     def run(self):
 
-        x_train = self.internal_data_loader.word_embeddings_training_all
-        train_aspects = self.internal_data_loader.aspect_indices_training
-        y_train = self.internal_data_loader.polarity_matrix_training
+        x_train = np.array(self.internal_data_loader.word_embeddings_training_all)
+        train_aspects = np.array(self.internal_data_loader.aspect_indices_training)
+        y_train = np.array(self.internal_data_loader.polarity_matrix_training)
 
-        x_test = self.internal_data_loader.word_embeddings_test_all
-        test_aspects = self.internal_data_loader.aspect_indices_test
-        y_test = self.internal_data_loader.polarity_matrix_test
-
-        results = None
+        x_test = np.array(self.internal_data_loader.word_embeddings_test_all)
+        test_aspects = np.array(self.internal_data_loader.aspect_indices_test)
+        y_test = np.array(self.internal_data_loader.polarity_matrix_test)
 
         if self.config.cross_validation:
 
-            training_indices, test_indices = self.internal_data_loader.get_random_indices_for_cross_validation(
-                self.config.cross_validation_rounds, x_train.shape[0])
+            training_indices, validation_indices = self.internal_data_loader.get_indices_cross_validation()
 
             results = {}
 
             for i in range(self.config.cross_validation_rounds):
 
-                x_train = x_train[training_indices[i]]
-                y_train = y_train[training_indices[i]]
-                train_aspects = train_aspects[training_indices[i]]
-                x_test = x_train[test_indices[i]]
-                y_test = y_train[test_indices[i]]
-                test_aspects = train_aspects[test_indices[i]]
+                x_train_cross = x_train[training_indices[i]]
+                y_train_cross = y_train[training_indices[i]]
+                train_aspects_cross = train_aspects[training_indices[i]]
+                x_validation_cross = x_train[validation_indices[i]]
+                y_validation_cross = y_train[validation_indices[i]]
+                validation_aspects_cross = train_aspects[validation_indices[i]]
 
                 if self.config.use_of_ontology:
                     remaining_indices = self.internal_data_loader.read_remaining_data(is_cross_val=True)
-                    x_test = x_test[remaining_indices]
-                    y_test = y_test[remaining_indices]
-                    test_aspects = test_aspects[remaining_indices]
+                    x_validation_cross = x_validation_cross[remaining_indices]
+                    y_validation_cross = y_validation_cross[remaining_indices]
+                    validation_aspects_cross = validation_aspects_cross[remaining_indices]
 
-                result = self.fit(x_train=x_train, y_train=y_train, train_aspects=train_aspects, x_test=x_test,
-                                   y_test=y_test, test_aspects=test_aspects)
+                result = self.fit(x_train=x_train_cross, y_train=y_train_cross, train_aspects=train_aspects_cross, x_test=x_validation_cross,
+                                   y_test=y_validation_cross, test_aspects=validation_aspects_cross)
                 results['cross_validation_' + str(i)] = result
+
+            with open(self.config.file_of_cross_val_results, 'w') as outfile:
+                json.dump(results, outfile, ensure_ascii=False)
 
         else:
 
@@ -192,7 +193,7 @@ class NeuralLanguageModel:
             results = self.fit(x_train=x_train, y_train=y_train, train_aspects=train_aspects, x_test=x_test,
                            y_test=y_test, test_aspects=test_aspects)
 
-        with open(self.config.file_of_results, 'w') as outfile:
-            json.dump(results, outfile, ensure_ascii=False)
+            with open(self.config.file_of_results, 'w') as outfile:
+                json.dump(results, outfile, ensure_ascii=False)
 
 

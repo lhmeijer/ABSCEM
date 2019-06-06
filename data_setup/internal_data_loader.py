@@ -7,14 +7,16 @@ class InternalDataLoader:
 
     def __init__(self, config):
         self.config = config
+        self.word_list = []
 
         self.total_word_in_training = []
         self.lemmatized_training = []
         self.word_embeddings_training_all = []
         self.word_embeddings_training_only = []
-        self.bag_of_words_training = []
+        self.sentiment_distribution_training = []
         self.part_of_speech_training = []
         self.negation_in_training = []
+        self.aspect_dependencies_training = []
         self.word_mentions_training = []
         self.word_polarities_training = []
         self.word_relations_training = []
@@ -26,7 +28,8 @@ class InternalDataLoader:
         self.lemmatized_test = []
         self.word_embeddings_test_all = []
         self.word_embeddings_test_only = []
-        self.bag_of_words_test = []
+        self.sentiment_distribution_test = []
+        self.aspect_dependencies_test = []
         self.part_of_speech_test = []
         self.negation_in_test = []
         self.word_mentions_test = []
@@ -43,24 +46,35 @@ class InternalDataLoader:
 
         with open(load_internal_file_name, 'r') as file:
             for line in file:
-                sentence = json.loads(line)
+                sentences = json.loads(line)
 
-                self.word_embeddings_training_only.append(sentence['word_embeddings'])
-                self.part_of_speech_training.append(sentence['part_of_speech_tags'])
-                self.negation_in_training.append(sentence['word_negations'])
+                for sentence in sentences:
 
-                for n_aspects in range(len(sentence['aspects'])):
-                    number_of_words = sentence['lemmatized_sentence']
-                    self.total_word_in_training.append(number_of_words)
-                    self.lemmatized_training.append(sentence['lemmatized_sentence'])
-                    self.word_embeddings_training_all.append(sentence['word_embeddings'])
-                    self.bag_of_words_training.append(sentence['bag_of_words'])
-                    self.word_mentions_training.append(sentence['word_mentions'][n_aspects])
-                    self.word_polarities_training.append(sentence['word_polarities'][n_aspects])
-                    self.word_relations_training.append(sentence['aspect_relations'][n_aspects])
-                    self.aspect_indices_training.append(sentence['aspect_indices'][n_aspects])
-                    self.polarity_matrix_training.append(sentence['polarity_matrix'][n_aspects])
-                    self.categories_matrix_training.append(sentence['category_matrix'][n_aspects])
+                    self.word_embeddings_training_only.append(sentence['word_embeddings'])
+                    self.part_of_speech_training.append(sentence['part_of_speech_tags'])
+                    self.sentiment_distribution_training.append(sentence['sentiment_distribution'])
+
+                    for n_aspects in range(len(sentence['aspects'])):
+                        number_of_words = sentence['lemmatized_sentence']
+                        self.total_word_in_training.append(number_of_words)
+
+                        lemmatized_sentence = sentence['lemmatized_sentence']
+                        self.lemmatized_training.append(lemmatized_sentence)
+
+                        for lemma in lemmatized_sentence:
+                            self.word_list.append(lemma)
+
+                        self.word_embeddings_training_all.append(sentence['word_embeddings'])
+                        self.negation_in_training.append(sentence['negation_in_sentence'])
+                        self.aspect_dependencies_training.append(sentence['aspect_dependencies'])
+                        self.word_mentions_training.append(sentence['word_mentions'][n_aspects])
+                        self.word_polarities_training.append(sentence['word_polarities'][n_aspects])
+                        self.word_relations_training.append(sentence['aspect_relations'][n_aspects])
+                        self.aspect_indices_training.append(sentence['aspect_indices'][n_aspects])
+                        self.polarity_matrix_training.append(sentence['polarity_matrix'][n_aspects])
+                        self.categories_matrix_training.append(sentence['category_matrix'][n_aspects])
+
+        self.setup_cross_val_indices(len(self.word_embeddings_training_all))
 
     def load_internal_test_data(self, load_internal_file_name):
 
@@ -69,44 +83,103 @@ class InternalDataLoader:
 
         with open(load_internal_file_name, 'r') as file:
             for line in file:
-                sentence = json.loads(line)
+                sentences = json.loads(line)
+                for sentence in sentences:
+                    self.word_embeddings_test_only.append(sentence['word_embeddings'])
+                    self.part_of_speech_test.append(sentence['part_of_speech_tags'])
+                    self.sentiment_distribution_test.append(sentence['sentiment_distribution'])
 
-                self.word_embeddings_test_only.append(sentence['word_embeddings'])
-                self.part_of_speech_test.append(sentence['part_of_speech_tags'])
-                self.negation_in_test.append(sentence['word_negations'])
+                    for n_aspects in range(len(sentence['aspects'])):
+                        number_of_words = sentence['lemmatized_sentence']
+                        self.total_word_in_test.append(number_of_words)
 
-                for n_aspects in range(len(sentence['aspects'])):
-                    number_of_words = sentence['lemmatized_sentence']
-                    self.total_word_in_test.append(number_of_words)
-                    self.lemmatized_test.append(sentence['lemmatized_sentence'])
-                    self.word_embeddings_test_all.append(sentence['word_embeddings'])
-                    self.bag_of_words_test.append(sentence['bag_of_words'])
-                    self.word_mentions_test.append(sentence['word_mentions'][n_aspects])
-                    self.word_polarities_test.append(sentence['word_polarities'][n_aspects])
-                    self.word_relations_test.append(sentence['aspect_relations'][n_aspects])
-                    self.aspect_indices_test.append(sentence['aspect_indices'][n_aspects])
-                    self.polarity_matrix_test.append(sentence['polarity_matrix'][n_aspects])
-                    self.categories_matrix_test.append(sentence['category_matrix'][n_aspects])
+                        lemmatized_sentence = sentence['lemmatized_sentence']
+                        self.lemmatized_test.append(lemmatized_sentence)
 
-    def get_random_indices_for_cross_validation(self, cross_validation_rounds, size_of_dataset):
+                        for lemma in lemmatized_sentence:
+                            self.word_list.append(lemma)
 
-        np.random.seed(self.config.seed)
+                        self.word_embeddings_test_all.append(sentence['word_embeddings'])
+                        self.negation_in_test.append(sentence['negation_in_sentence'])
+                        self.aspect_dependencies_test.append(sentence['aspect_dependencies'])
+                        self.word_mentions_test.append(sentence['word_mentions'][n_aspects])
+                        self.word_polarities_test.append(sentence['word_polarities'][n_aspects])
+                        self.word_relations_test.append(sentence['aspect_relations'][n_aspects])
+                        self.aspect_indices_test.append(sentence['aspect_indices'][n_aspects])
+                        self.polarity_matrix_test.append(sentence['polarity_matrix'][n_aspects])
+                        self.categories_matrix_test.append(sentence['category_matrix'][n_aspects])
 
-        number_training_data = np.int(self.config.cross_validation_percentage * size_of_dataset)
-        number_test_data = size_of_dataset - number_training_data
+    # def get_random_indices_for_cross_validation(self, cross_validation_rounds, size_of_dataset):
+    #
+    #     np.random.seed(self.config.seed)
+    #
+    #     number_training_data = np.int(self.config.cross_validation_percentage * size_of_dataset)
+    #     number_test_data = size_of_dataset - number_training_data
+    #
+    #     training_indices = np.zeros(cross_validation_rounds, number_training_data)
+    #     test_indices = np.zeros(cross_validation_rounds, number_test_data)
+    #
+    #     for i in range(cross_validation_rounds):
+    #
+    #         a_range = np.arange(0, size_of_dataset)
+    #         np.random.shuffle(a_range)
+    #
+    #         training_indices[i] = a_range[:number_training_data]
+    #         test_indices[i] = a_range[number_training_data:size_of_dataset]
+    #
+    #     return training_indices, test_indices
 
-        training_indices = np.zeros(cross_validation_rounds, number_training_data)
-        test_indices = np.zeros(cross_validation_rounds, number_test_data)
+    def setup_cross_val_indices(self, size):
 
-        for i in range(cross_validation_rounds):
+        if not os.path.isfile(self.config.cross_validation_indices_training) and not os.path.isfile(self.config.cross_validation_indices_validation):
 
-            a_range = np.arange(0, size_of_dataset)
-            np.random.shuffle(a_range)
+            np.random.seed(self.config.seed)
+            number_training_data = np.int(self.config.cross_validation_percentage * size)
+            number_test_data = size - number_training_data
 
-            training_indices[i] = a_range[:number_training_data]
-            test_indices[i] = a_range[number_training_data:size_of_dataset]
+            training_indices = np.zeros(self.config.cross_validation_rounds, number_training_data)
+            validation_indices = np.zeros(self.config.cross_validation_rounds, number_test_data)
 
-        return training_indices, test_indices
+            for i in range(self.config.cross_validation_rounds):
+                a_range = np.arange(0, size)
+                np.random.shuffle(a_range)
+
+                training_indices[i] = a_range[:number_training_data]
+                validation_indices[i] = a_range[number_training_data:size]
+
+            cross_val_training_indices = {
+                'cross_val_train': training_indices.tolist()
+            }
+
+            with open(self.config.cross_validation_indices_training, 'w') as outfile:
+                json.dump(cross_val_training_indices, outfile, ensure_ascii=False)
+
+            cross_val_validation_indices = {
+                'cross_val_validation': validation_indices.tolist()
+            }
+
+            with open(self.config.cross_validation_indices_validation, 'w') as outfile:
+                json.dump(cross_val_validation_indices, outfile, ensure_ascii=False)
+
+    def get_indices_cross_validation(self):
+
+        if not os.path.isfile(self.config.cross_validation_indices_training):
+            raise ("[!] cross validation training set is not found, please run the internal data loader")
+
+        if not os.path.isfile(self.config.cross_validation_indices_validation):
+            raise ("[!] cross validation test set is not found, please run the internal data loader")
+
+        with open(self.config.cross_validation_indices_training, 'r') as file:
+            for line in file:
+                line = json.loads(line)
+                training_indices = line['cross_val_train']
+
+        with open(self.config.cross_validation_indices_validation, 'r') as file:
+            for line in file:
+                line = json.loads(line)
+                test_indices = line['cross_val_validation']
+
+        return np.array(training_indices), np.array(test_indices)
 
     @staticmethod
     def split_embeddings_in_left_target_right(word_embeddings, aspect_indices, max_sentence_length, max_target_length):

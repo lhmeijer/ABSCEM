@@ -6,6 +6,7 @@ class Config:
     year = 2015
     embedding_dimension = 300
     hybrid = False
+    cross_validation_rounds = 10
     cross_validation_percentage = 0.8
     cross_validation = False
     seed = 100
@@ -19,6 +20,11 @@ class Config:
     remaining_data = "data/internal_data/remaining_indices_ontology_" + str(year) + ".json"
     remaining_data_cross_val = "data/internal_data/remaining_indices_ontology_cross_val_" + str(year) + ".json"
 
+    cross_validation_indices_training = "data/internal_data/cross_val_indices_training_round_" + \
+                                        str(cross_validation_rounds) + "_" + str(year) + ".json"
+    cross_validation_indices_validation = "data/internal_data/cross_val_indices_test_round_" + \
+                                          str(cross_validation_rounds) + "_" + str(year) + ".json"
+
     glove_embeddings = "data/external_data/glove.42B." + str(embedding_dimension) + "d.txt"
 
 
@@ -26,14 +32,16 @@ class OntologyConfig(Config):
 
     name_of_model = "ontology_reasoner"
     cross_validation_rounds = 10
-    file_of_results = "results/abs_classifiers/ontology_reasoner_" + str(Config.year) + ".json"
+    file_of_results = "results/abs_classifiers/" + str(Config.year) + "/" + name_of_model + ".json"
+    file_of_cross_val_results = "results/abs_classifiers/" + str(Config.year) + "/cross_val_" + name_of_model + "json"
 
 
 class SVMConfig(Config):
 
     name_of_model = "svm_model"
     cross_validation_rounds = 10
-    file_of_results = "results/abs_classifiers/svm_model_" + str(Config.year) + ".json"
+    file_of_results = "results/abs_classifiers/" + str(Config.year) + "/" + name_of_model + ".json"
+    file_of_cross_val_results = "results/abs_classifiers/" + str(Config.year) + "/cross_val_" + name_of_model + "json"
 
 
 class NeuralLanguageModelConfig(Config):
@@ -67,11 +75,11 @@ class CabascConfig(NeuralLanguageModelConfig):
     keep_prob1 = 0.5
     keep_prob2 = 0.5
     random_base = 0.01
-    cross_validation_rounds = 10
 
     use_of_ontology = False
 
-    file_of_results = "results/abs_classifiers/CABASC_model_" + str(Config.year) + ".json"
+    file_of_results = "results/abs_classifiers/" + str(Config.year) + "/" + name_of_model + ".json"
+    file_of_cross_val_results = "results/abs_classifiers/" + str(Config.year) + "/cross_val_" + name_of_model + "json"
     file_to_save_model = "data/model_savings/CABASC_model_" + str(Config.year) + "_tf.model"
 
 
@@ -84,23 +92,24 @@ class LCR_RotConfig(NeuralLanguageModelConfig):
     number_of_iterations = 50
     random_base = 0.01
 
-    cross_validation_rounds = 10
-
-    file_of_results = "results/abs_classifiers/LCR_Rot_model_" + str(Config.year) + ".json"
+    file_of_results = "results/abs_classifiers/" + str(Config.year) + "/" + name_of_model + ".json"
+    file_of_cross_val_results = "results/abs_classifiers/" + str(Config.year) + "/cross_val_" + name_of_model + "json"
     file_to_save_model = "data/model_savings/LCR_Rot_model_" + str(Config.year) + "_tf.model"
 
 
 class LCR_RotInverseConfig(LCR_RotConfig):
 
     name_of_model = "LCR_Rot_inverse_model"
-    file_of_results = "results/abs_classifiers/LCR_Rot_inverse_model_" + str(Config.year) + ".json"
+    file_of_results = "results/abs_classifiers/" + str(Config.year) + "/" + name_of_model + ".json"
+    file_of_cross_val_results = "results/abs_classifiers/" + str(Config.year) + "/cross_val_" + name_of_model + "json"
     file_to_save_model = "data/model_savings/LCR_Rot_inverse_model_" + str(Config.year) + "_tf.model"
 
 
 class LCR_RotHopConfig(LCR_RotConfig):
 
     name_of_model = "LCR_Rot_hop_model"
-    file_of_results = "results/abs_classifiers/LCR_Rot_hop_model_" + str(Config.year) + ".json"
+    file_of_results = "results/abs_classifiers/" + str(Config.year) + "/" + name_of_model + ".json"
+    file_of_cross_val_results = "results/abs_classifiers/" + str(Config.year) + "/cross_val_" + name_of_model + "json"
     file_to_save_model = "data/model_savings/LCR_Rot_hop_model_" + str(Config.year) + "_tf.model"
 
 

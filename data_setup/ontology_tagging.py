@@ -1,12 +1,13 @@
 import owlready2 as owl
-from nltk.parse.stanford import StanfordDependencyParser
+# from nltk.parse.stanford import StanfordDependencyParser
 import nltk
 import os
 
+
 # path to the java runtime environment
-nltk.internals.config_java('/usr/bin/java')
-java_path = '/usr/bin/java'
-os.environ['JAVAHOME'] = java_path
+# nltk.internals.config_java('/usr/bin/java')
+# java_path = '/usr/bin/java'
+# os.environ['JAVAHOME'] = java_path
 
 
 class OntologyTagging:
@@ -54,16 +55,20 @@ class OntologyTagging:
 
             if aspect_length > 1:
 
-                for index in range(aspect_indices[aspect_index][1], aspect_indices[aspect_index][aspect_length - 2]):
+                for index in range(1, aspect_length):
 
-                    if aspect_class is not None and ontology_classes_of_sentence[index] is not None:
+                    next_indices = aspect_indices[aspect_index][index]
+                    print("next_indices ", next_indices)
+                    print("aspect_class ", aspect_class)
+                    print("ontology_classes_of_sentence[next_indices] ", ontology_classes_of_sentence[next_indices])
+                    if aspect_class is not None and ontology_classes_of_sentence[next_indices] is not None:
 
                         aspect_class = owl.types.new_class(aspect_class.__name__ +
-                                                           ontology_classes_of_sentence[index][0].__name__,
-                                                           (aspect_class, ontology_classes_of_sentence[index][0]))
+                                                           ontology_classes_of_sentence[next_indices].__name__,
+                                                           (aspect_class, ontology_classes_of_sentence[next_indices]))
 
-                    elif aspect_class is None and ontology_classes_of_sentence[index] is not None:
-                        aspect_class = ontology_classes_of_sentence[index]
+                    elif aspect_class is None and ontology_classes_of_sentence[next_indices] is not None:
+                        aspect_class = ontology_classes_of_sentence[next_indices]
 
             for word_index in range(number_words_in_sentence):
 
