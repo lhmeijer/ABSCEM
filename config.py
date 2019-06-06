@@ -20,10 +20,10 @@ class Config:
     remaining_data = "data/internal_data/remaining_indices_ontology_" + str(year) + ".json"
     remaining_data_cross_val = "data/internal_data/remaining_indices_ontology_cross_val_" + str(year) + ".json"
 
-    cross_validation_indices_training = "data/internal_data/cross_val_indices_training_round_" + \
-                                        str(cross_validation_rounds) + "_" + str(year) + ".json"
-    cross_validation_indices_validation = "data/internal_data/cross_val_indices_test_round_" + \
-                                          str(cross_validation_rounds) + "_" + str(year) + ".json"
+    cross_validation_indices_training = "data/internal_data/cross_val_" + str(cross_validation_rounds) + \
+                                        "_training_indices_" + str(year) + ".json"
+    cross_validation_indices_validation = "data/internal_data/cross_val_" + str(cross_validation_rounds) + \
+                                          "_validation_indices_" + str(year) + ".json"
 
     glove_embeddings = "data/external_data/glove.42B." + str(embedding_dimension) + "d.txt"
 
@@ -33,7 +33,7 @@ class OntologyConfig(Config):
     name_of_model = "ontology_reasoner"
     cross_validation_rounds = 10
     file_of_results = "results/abs_classifiers/" + str(Config.year) + "/" + name_of_model + ".json"
-    file_of_cross_val_results = "results/abs_classifiers/" + str(Config.year) + "/cross_val_" + name_of_model + "json"
+    file_of_cross_val_results = "results/abs_classifiers/" + str(Config.year) + "/cross_val_" + name_of_model + ".json"
 
 
 class SVMConfig(Config):

@@ -11,7 +11,7 @@ class OntologyReasoner:
     @staticmethod
     def predict_sentiment_of_sentences(sentence_polarities, aspects_dependencies, sentence_negations, polarity_matrix):
 
-        number_of_sentences = len(sentence_polarities)
+        number_of_sentences = sentence_polarities.shape[0]
 
         polarity_count = np.array([0, 0, 0])
         majority_count = np.array([0, 0, 0])
@@ -20,7 +20,7 @@ class OntologyReasoner:
 
         for index_sentence in range(number_of_sentences):
 
-            index_true_polarity = polarity_matrix[index_sentence].index(1)
+            index_true_polarity = polarity_matrix[index_sentence].tolist().index(1)
             polarity_count[index_true_polarity] += 1
 
             number_of_words_in_sentence = len(sentence_polarities[index_sentence])
@@ -29,13 +29,15 @@ class OntologyReasoner:
 
             negation = False
 
-            if len(sentence_negations[index_sentence]) == 2:
+            for negation_indices in sentence_negations[index_sentence]:
 
-                aspect_relation_1 = aspects_dependencies[index_sentence][sentence_negations[index_sentence][0]]
-                aspect_relation_2 = aspects_dependencies[index_sentence][sentence_negations[index_sentence][1]]
+                if len(negation_indices) == 2:
 
-                if aspect_relation_1 != 'no' or aspect_relation_2 != 'no':
-                    negation = True
+                    aspect_relation_1 = aspects_dependencies[index_sentence][negation_indices[0]]
+                    aspect_relation_2 = aspects_dependencies[index_sentence][negation_indices[1]]
+
+                    if aspect_relation_1 != 'no' or aspect_relation_2 != 'no':
+                        negation = True
 
             for index_word in range(number_of_words_in_sentence):
 
@@ -80,15 +82,15 @@ class OntologyReasoner:
 
     def run(self):
 
-        x_train = self.internal_data_loader.word_polarities_training
-        train_aspects_dependencies = self.internal_data_loader.aspect_dependencies_training
-        train_negations = self.internal_data_loader.negation_in_training
-        y_train = self.internal_data_loader.polarity_matrix_training
+        x_train = np.array(self.internal_data_loader.word_polarities_training)
+        train_aspects_dependencies = np.array(self.internal_data_loader.aspect_dependencies_training)
+        train_negations = np.array(self.internal_data_loader.negation_in_training)
+        y_train = np.array(self.internal_data_loader.polarity_matrix_training)
 
-        x_test = self.internal_data_loader.word_polarities_test
-        test_aspects_dependencies = self.internal_data_loader.aspect_dependencies_test
-        test_negations = self.internal_data_loader.negation_in_test
-        y_test = self.internal_data_loader.polarity_matrix_test
+        x_test = np.array(self.internal_data_loader.word_polarities_test)
+        test_aspects_dependencies = np.array(self.internal_data_loader.aspect_dependencies_test)
+        test_negations = np.array(self.internal_data_loader.negation_in_test)
+        y_test = np.array(self.internal_data_loader.polarity_matrix_test)
 
         if self.config.cross_validation:
 
@@ -96,6 +98,11 @@ class OntologyReasoner:
 
             results = {}
             remaining_indices = []
+
+            train_single_acc_majority = list(range(self.config.cross_validation_rounds))
+            train_single_acc_with_backup = list(range(self.config.cross_validation_rounds))
+            validation_single_acc_majority = list(range(self.config.cross_validation_rounds))
+            validation_single_acc_with_backup = list(range(self.config.cross_validation_rounds))
 
             for i in range(self.config.cross_validation_rounds):
 
@@ -132,21 +139,30 @@ class OntologyReasoner:
                 accuracy_majority_validation = majority_count_validation / count_validation
                 accuracy_with_back_validation = with_backup_count_validation / count_validation
 
+                train_single_acc_majority[i] = np.sum(majority_count_training) / np.sum(count_training),
+                train_single_acc_with_backup[i] = np.sum(with_backup_count_training) / np.sum(count_training),
+                validation_single_acc_majority[i] = np.sum(majority_count_validation) / np.sum(count_validation),
+                validation_single_acc_with_backup[i] = np.sum(with_backup_count_validation) / np.sum(count_validation),
+
                 result = {
                     'classification model': self.config.name_of_model,
-                    'n_in_training_sample': count_training,
-                    'n_in_validation_sample': count_validation,
-                    'train_acc_majority': accuracy_majority_training,
-                    'train_acc_with_backup': accuracy_with_back_training,
-                    'validation_acc_majority': accuracy_majority_validation,
-                    'validation_acc_with_backup': accuracy_with_back_validation,
-                    'train_pred_y_majority': majority_count_training,
-                    'train_pred_y_with_backup': with_backup_count_training,
-                    'validation_pred_y_majority': majority_count_validation,
-                    'validation_pred_y_with_backup': with_backup_count_validation
+                    'n_in_training_sample': count_training.tolist(),
+                    'n_in_validation_sample': count_validation.tolist(),
+                    'train_single_acc_majority': train_single_acc_majority[i],
+                    'train_single_acc_with_backup': train_single_acc_with_backup[i],
+                    'test_single_acc_majority': validation_single_acc_majority[i],
+                    'test_single_acc_with_backup': validation_single_acc_with_backup[i],
+                    'train_acc_majority': accuracy_majority_training.tolist(),
+                    'train_acc_with_backup': accuracy_with_back_training.tolist(),
+                    'validation_acc_majority': accuracy_majority_validation.tolist(),
+                    'validation_acc_with_backup': accuracy_with_back_validation.tolist(),
+                    'train_pred_y_majority': majority_count_training.tolist(),
+                    'train_pred_y_with_backup': with_backup_count_training.tolist(),
+                    'validation_pred_y_majority': majority_count_validation.tolist(),
+                    'validation_pred_y_with_backup': with_backup_count_validation.tolist()
                 }
 
-                results['cross_validation_' + str(i)] = result
+                results['cross_validation_round_' + str(i)] = result
 
             remaining_sentences = {
                 'cross_val_indices': remaining_indices
@@ -155,8 +171,17 @@ class OntologyReasoner:
             with open(self.config.remaining_data_cross_val, 'w') as outfile:
                 json.dump(remaining_sentences, outfile, ensure_ascii=False)
 
+            results['mean_accuracy_train_single_acc_majority'] = np.mean(train_single_acc_majority)
+            results['standard_deviation_train_single_acc_majority'] = np.std(train_single_acc_majority)
+            results['mean_accuracy_train_single_acc_with_backup'] = np.mean(train_single_acc_with_backup)
+            results['standard_deviation_train_single_acc_with_backup'] = np.std(train_single_acc_with_backup)
+            results['mean_accuracy_validation_single_acc_majority'] = np.mean(validation_single_acc_majority)
+            results['standard_deviation_validation_single_acc_majority'] = np.std(validation_single_acc_majority)
+            results['mean_accuracy_validation_single_acc_with_backup'] = np.mean(validation_single_acc_with_backup)
+            results['standard_deviation_validation_single_acc_with_backup'] = np.std(validation_single_acc_with_backup)
+
             with open(self.config.file_of_cross_val_results, 'w') as outfile:
-                json.dump(results, outfile, ensure_ascii=False)
+                json.dump(results, outfile, ensure_ascii=False, indent=0)
 
         else:
 
@@ -191,17 +216,21 @@ class OntologyReasoner:
 
             results = {
                 'classification model': self.config.name_of_model,
-                'n_in_training_sample': count_training,
-                'n_in_test_sample': count_test,
-                'train_acc_majority': accuracy_majority_training,
-                'train_acc_with_backup': accuracy_with_back_training,
-                'test_acc_majority': accuracy_majority_test,
-                'test_acc_with_backup': accuracy_with_back_test,
-                'train_pred_y_majority': majority_count_training,
-                'train_pred_y_with_backup': with_backup_count_training,
-                'test_pred_y_majority': majority_count_test,
-                'test_pred_y_with_backup': with_backup_count_test
+                'n_in_training_sample': count_training.tolist(),
+                'n_in_test_sample': count_test.tolist(),
+                'train_single_acc_majority': np.sum(majority_count_training) / np.sum(count_training),
+                'train_single_acc_with_backup': np.sum(with_backup_count_training) / np.sum(count_training),
+                'test_single_acc_majority': np.sum(majority_count_test) / np.sum(count_test),
+                'test_single_acc_with_backup': np.sum(with_backup_count_test) / np.sum(count_test),
+                'train_acc_majority': accuracy_majority_training.tolist(),
+                'train_acc_with_backup': accuracy_with_back_training.tolist(),
+                'test_acc_majority': accuracy_majority_test.tolist(),
+                'test_acc_with_backup': accuracy_with_back_test.tolist(),
+                'train_pred_y_majority': majority_count_training.tolist(),
+                'train_pred_y_with_backup': with_backup_count_training.tolist(),
+                'test_pred_y_majority': majority_count_test.tolist(),
+                'test_pred_y_with_backup': with_backup_count_test.tolist()
             }
 
             with open(self.config.file_of_results, 'w') as outfile:
-                json.dump(results, outfile, ensure_ascii=False)
+                json.dump(results, outfile, ensure_ascii=False, indent=0)

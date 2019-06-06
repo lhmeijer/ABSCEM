@@ -52,7 +52,6 @@ class InternalDataLoader:
 
                     self.word_embeddings_training_only.append(sentence['word_embeddings'])
                     self.part_of_speech_training.append(sentence['part_of_speech_tags'])
-                    self.sentiment_distribution_training.append(sentence['sentiment_distribution'])
 
                     for n_aspects in range(len(sentence['aspects'])):
                         number_of_words = sentence['lemmatized_sentence']
@@ -65,8 +64,9 @@ class InternalDataLoader:
                             self.word_list.append(lemma)
 
                         self.word_embeddings_training_all.append(sentence['word_embeddings'])
+                        self.sentiment_distribution_training.append(sentence['sentiment_distribution'])
                         self.negation_in_training.append(sentence['negation_in_sentence'])
-                        self.aspect_dependencies_training.append(sentence['aspect_dependencies'])
+                        self.aspect_dependencies_training.append(sentence['aspect_dependencies'][n_aspects])
                         self.word_mentions_training.append(sentence['word_mentions'][n_aspects])
                         self.word_polarities_training.append(sentence['word_polarities'][n_aspects])
                         self.word_relations_training.append(sentence['aspect_relations'][n_aspects])
@@ -87,7 +87,6 @@ class InternalDataLoader:
                 for sentence in sentences:
                     self.word_embeddings_test_only.append(sentence['word_embeddings'])
                     self.part_of_speech_test.append(sentence['part_of_speech_tags'])
-                    self.sentiment_distribution_test.append(sentence['sentiment_distribution'])
 
                     for n_aspects in range(len(sentence['aspects'])):
                         number_of_words = sentence['lemmatized_sentence']
@@ -100,8 +99,9 @@ class InternalDataLoader:
                             self.word_list.append(lemma)
 
                         self.word_embeddings_test_all.append(sentence['word_embeddings'])
+                        self.sentiment_distribution_test.append(sentence['sentiment_distribution'])
                         self.negation_in_test.append(sentence['negation_in_sentence'])
-                        self.aspect_dependencies_test.append(sentence['aspect_dependencies'])
+                        self.aspect_dependencies_test.append(sentence['aspect_dependencies'][n_aspects])
                         self.word_mentions_test.append(sentence['word_mentions'][n_aspects])
                         self.word_polarities_test.append(sentence['word_polarities'][n_aspects])
                         self.word_relations_test.append(sentence['aspect_relations'][n_aspects])
@@ -137,11 +137,11 @@ class InternalDataLoader:
             number_training_data = np.int(self.config.cross_validation_percentage * size)
             number_test_data = size - number_training_data
 
-            training_indices = np.zeros(self.config.cross_validation_rounds, number_training_data)
-            validation_indices = np.zeros(self.config.cross_validation_rounds, number_test_data)
+            training_indices = np.zeros((self.config.cross_validation_rounds, number_training_data), dtype=int)
+            validation_indices = np.zeros((self.config.cross_validation_rounds, number_test_data), dtype=int)
 
             for i in range(self.config.cross_validation_rounds):
-                a_range = np.arange(0, size)
+                a_range = np.arange(0, size, dtype=int)
                 np.random.shuffle(a_range)
 
                 training_indices[i] = a_range[:number_training_data]
