@@ -14,6 +14,7 @@ def softmax_with_len(inputs, length, max_len):
 
 def attention_function(hidden_states, context_representation, length, max_length, batch_size, n_hidden, l2_reg, random_base, layer_id):
 
+    batch_size = tf.shape(hidden_states)[0]
     number_of_words = tf.shape(hidden_states)[1]
     word_dimension = tf.shape(hidden_states)[2]
 
@@ -23,17 +24,17 @@ def attention_function(hidden_states, context_representation, length, max_length
         initializer=tf.random_uniform_initializer(-random_base, random_base),
         regularizer=tf.contrib.layers.l2_regularizer(l2_reg)
     )
-    b = tf.get_variable(
-        name='att_b' + str(layer_id),
-        shape=[batch_size, max_length, 1],
-        initializer=tf.random_uniform_initializer(-0., 0.),
-        regularizer=tf.contrib.layers.l2_regularizer(scale=l2_reg)
-    )
+    # b = tf.get_variable(
+    #     name='att_b' + str(layer_id),
+    #     shape=[batch_size, max_length, 1],
+    #     initializer=tf.random_uniform_initializer(-0., 0.),
+    #     regularizer=tf.contrib.layers.l2_regularizer(scale=l2_reg)
+    # )
     reshape_hidden_states = tf.reshape(hidden_states, [-1, word_dimension])
     tmp = tf.reshape(tf.matmul(reshape_hidden_states, w), [-1, number_of_words, n_hidden])
     attend = tf.expand_dims(context_representation, 2)
     tmp = tf.reshape(tf.matmul(tmp, attend), [batch_size, number_of_words, 1])
-    tmp = tf.tanh(tmp + b)
+    tmp = tf.tanh(tmp)
     alpha = softmax_with_len(tmp, length, number_of_words)
     return alpha
 

@@ -23,7 +23,8 @@ def cnn_layer(inputs, filter_size, strides, padding, random_base, l2_reg, active
     return active_func(x)
 
 
-def dynamic_rnn(cell, inputs, n_hidden, length, max_len, scope_name, out_type='last'):
+def dynamic_rnn(cell, inputs, n_hidden, length):
+
     model = tf.keras.Sequential([
         tf.keras.layers.RNN(cell(n_hidden, return_sequences=True), merge_mode="concat"),
     ])
@@ -63,12 +64,17 @@ def dynamic_rnn(cell, inputs, n_hidden, length, max_len, scope_name, out_type='l
 
 def bi_dynamic_rnn(cell, inputs, n_hidden, length):
 
+    print("cell ", cell)
+    print("inputs ", inputs)
+    print("length ", length)
+
     model = tf.keras.Sequential([
         tf.keras.layers.Bidirectional(cell(n_hidden, return_sequences=True), merge_mode="concat"),
     ])
+    print("model ", model)
 
-    inputs = inputs
     mask = tf.expand_dims(tf.sequence_mask(length, dtype=tf.float32), axis=-1)
+    print("mask ", mask)
     return model(inputs, mask=mask)
 
     # tf.keras.layers.Bidirectional(tf.keras.layers.RNN(cell))

@@ -43,8 +43,19 @@ def main():
     # Do you want to run cross-validation rounds, please specify the cross_validation_round settings in config.py
     Config.cross_validation = False
 
-    # Diagnostic Classifier, do you want it on or off, please set up the configuration specify in config.py
-    diagnostic_classifier = False
+    # Which Diagnostic Classifier, do you want to switch on or off, you can choose more than one
+    # Please specify in config.py the specification per classifier
+    diagnostic_classifier_for_ontology_mention = False
+    diagnostic_classifier_for_part_of_speech_tagging = False
+    diagnostic_classifier_for_aspect_relations = False
+    diagnostic_classifier_for_aspect_polarities = False
+
+    diagnostic_classifiers = {
+        'mentions': diagnostic_classifier_for_ontology_mention,
+        'polarities': diagnostic_classifier_for_aspect_polarities,
+        'relations': diagnostic_classifier_for_aspect_relations,
+        'part_of_speech': diagnostic_classifier_for_part_of_speech_tagging
+    }
 
     # Local Interpretable model, do you want it on or off, please set up the configuration in config.py
     local_interpretable_model = False
@@ -63,8 +74,9 @@ def main():
         cabasc_model = CABASCModel(CabascConfig, internal_data_loader)
         cabasc_model.run()
 
-        if diagnostic_classifier:
-            diagnostic_classifier = DiagnosticClassifier(DiagnosticClassifierConfig, cabasc_model)
+        if True in diagnostic_classifiers:
+            diagnostic_classifier = DiagnosticClassifier(cabasc_model)
+            diagnostic_classifier.run(diagnostic_classifiers)
 
         if local_interpretable_model:
             local_interpretable_model = LocalInterpretableModel(LocalInterpretableConfig, cabasc_model)
@@ -73,8 +85,9 @@ def main():
         lcr_rot_model = LCRRot(LCR_RotConfig, internal_data_loader)
         lcr_rot_model.run()
 
-        if diagnostic_classifier:
-            diagnostic_classifier = DiagnosticClassifier(DiagnosticClassifierConfig, lcr_rot_model)
+        if True in diagnostic_classifiers:
+            diagnostic_classifier = DiagnosticClassifier(lcr_rot_model)
+            diagnostic_classifier.run(diagnostic_classifiers)
 
         if local_interpretable_model:
             local_interpretable_model = LocalInterpretableModel(LocalInterpretableConfig, lcr_rot_model)
@@ -84,8 +97,9 @@ def main():
         lcr_rot_inverse_model = LCRRotInverse(LCR_RotInverseConfig, internal_data_loader)
         lcr_rot_inverse_model.run()
 
-        if diagnostic_classifier:
-            diagnostic_classifier = DiagnosticClassifier(DiagnosticClassifierConfig, lcr_rot_inverse_model)
+        if True in diagnostic_classifiers:
+            diagnostic_classifier = DiagnosticClassifier(lcr_rot_inverse_model)
+            diagnostic_classifier.run(diagnostic_classifiers)
 
         if local_interpretable_model:
             local_interpretable_model = LocalInterpretableModel(LocalInterpretableConfig, lcr_rot_inverse_model)
@@ -94,8 +108,9 @@ def main():
         lcr_rot_hop_model = LCRRotHopModel(LCR_RotHopConfig, internal_data_loader)
         lcr_rot_hop_model.run()
 
-        if diagnostic_classifier:
-            diagnostic_classifier = DiagnosticClassifier(DiagnosticClassifierConfig, lcr_rot_hop_model)
+        if True in diagnostic_classifiers:
+            diagnostic_classifier = DiagnosticClassifier(lcr_rot_hop_model)
+            diagnostic_classifier.run(diagnostic_classifiers)
 
         if local_interpretable_model:
             local_interpretable_model = LocalInterpretableModel(LocalInterpretableConfig, lcr_rot_hop_model)

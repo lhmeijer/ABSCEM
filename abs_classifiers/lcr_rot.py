@@ -11,7 +11,7 @@ class LCRRot(NeuralLanguageModel):
         self.internal_data_loader = internal_data_loader
 
     def model_itself(self, left_sentence_parts, left_sentence_lengths, right_sentence_parts, right_sentence_lengths,
-                     target_parts, target_lengths):
+                     target_parts, target_lengths, keep_prob1, keep_prob2):
 
         print('I am lcr rot.')
 
@@ -19,7 +19,7 @@ class LCRRot(NeuralLanguageModel):
 
         cell = tf.keras.layers.LSTM
 
-        rate = 1 - self.config.keep_prob1
+        rate = 1 - keep_prob1
 
         # left hidden states
         input_left = tf.nn.dropout(left_sentence_parts, rate=rate)
@@ -71,7 +71,9 @@ class LCRRot(NeuralLanguageModel):
                                              target_right_context_representation, right_context_representation], 1)
 
         prob = softmax_layer(sentence_representation, 8 * self.config.number_hidden_units, self.config.random_base,
-                             self.config.keep_prob2, self.config.l2_regularization, self.config.number_of_classes)
+                             keep_prob2, self.config.l2_regularization, self.config.number_of_classes)
+
+        print("prob ", prob)
 
         layer_information = {
             'left_hidden_state': left_hidden_state,

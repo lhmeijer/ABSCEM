@@ -69,8 +69,8 @@ class LCRRotInverse(NeuralLanguageModel):
         sentence_representation = tf.concat([left_context_representation, target_left_context_representation,
                                              target_right_context_representation, right_context_representation], 1)
 
-        prob = softmax_layer(sentence_representation, 8 * FLAGS.n_hidden, FLAGS.random_base, self.config.keep_prob2,
-                             FLAGS.l2_reg, FLAGS.n_class)
+        prob = softmax_layer(sentence_representation, 8 * self.config.number_hidden_units, self.config.random_base,
+                             self.config.keep_prob2, self.config.l2_regularization, self.config.number_of_classes)
 
         layer_information = {
             'left_hidden_state': left_hidden_state,
