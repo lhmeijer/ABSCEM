@@ -12,34 +12,7 @@ def softmax_with_len(inputs, length, max_len):
     return inputs / _sum
 
 
-def attention_function(hidden_states, context_representation, length, max_length, batch_size, n_hidden, l2_reg, random_base, layer_id):
-
-    batch_size = tf.shape(hidden_states)[0]
-    number_of_words = tf.shape(hidden_states)[1]
-    word_dimension = tf.shape(hidden_states)[2]
-
-    w = tf.get_variable(
-        name='att_w_' + str(layer_id),
-        shape=[n_hidden, n_hidden],
-        initializer=tf.random_uniform_initializer(-random_base, random_base),
-        regularizer=tf.contrib.layers.l2_regularizer(l2_reg)
-    )
-    # b = tf.get_variable(
-    #     name='att_b' + str(layer_id),
-    #     shape=[batch_size, max_length, 1],
-    #     initializer=tf.random_uniform_initializer(-0., 0.),
-    #     regularizer=tf.contrib.layers.l2_regularizer(scale=l2_reg)
-    # )
-    reshape_hidden_states = tf.reshape(hidden_states, [-1, word_dimension])
-    tmp = tf.reshape(tf.matmul(reshape_hidden_states, w), [-1, number_of_words, n_hidden])
-    attend = tf.expand_dims(context_representation, 2)
-    tmp = tf.reshape(tf.matmul(tmp, attend), [batch_size, number_of_words, 1])
-    tmp = tf.tanh(tmp)
-    alpha = softmax_with_len(tmp, length, number_of_words)
-    return alpha
-
-
-def bilinear_attention_layer(inputs, attend, length, n_hidden, l2_reg, random_base, layer_id=1):
+def attention_function(inputs, attend, length, n_hidden, l2_reg, random_base, layer_id=1):
     """
     :param inputs: batch * max_len * n_hidden
     :param attend: batch * n_hidden
@@ -55,85 +28,16 @@ def bilinear_attention_layer(inputs, attend, length, n_hidden, l2_reg, random_ba
     w = tf.get_variable(
         name='att_w_' + str(layer_id),
         shape=[n_hidden, n_hidden],
-        # initializer=tf.random_normal_initializer(mean=0., stddev=np.sqrt(2. / (n_hidden + n_hidden))),
         initializer=tf.random_uniform_initializer(-random_base, random_base),
-        # initializer=tf.random_uniform_initializer(-np.sqrt(6.0 / (n_hidden + n_hidden)), np.sqrt(6.0 / (n_hidden + n_hidden))),
         regularizer=tf.contrib.layers.l2_regularizer(l2_reg)
     )
     inputs = tf.reshape(inputs, [-1, n_hidden])
     tmp = tf.reshape(tf.matmul(inputs, w), [-1, max_len, n_hidden])
     attend = tf.expand_dims(attend, 2)
     tmp = tf.reshape(tf.matmul(tmp, attend), [batch_size, 1, max_len])
-    # M = tf.expand_dims(tf.matmul(attend, w), 2)
-    # tmp = tf.reshape(tf.batch_matmul(inputs, M), [batch_size, 1, max_len])
+    tmp = tf.tanh(tmp)
     return softmax_with_len(tmp, length, max_len)
 
-def dot_produce_attention_layer(inputs, length, n_hidden, l2_reg, random_base, layer_id=1):
-    """
-    :param inputs: batch * max_len * n_hidden
-    :param length: batch * 1
-    :param n_hidden:
-    :param l2_reg:
-    :param random_base:
-    :param layer_id: layer's identical id
-    :return: batch * 1 * max_len
-    """
-    batch_size = tf.shape(inputs)[0]
-    max_len = tf.shape(inputs)[1]
-    u = tf.get_variable(
-        name='att_u_' + str(layer_id),
-        shape=[n_hidden, 1],
-        initializer=tf.random_normal_initializer(mean=0., stddev=np.sqrt(2. / (n_hidden + 1))),
-        # initializer=tf.random_uniform_initializer(-random_base, random_base),
-        # initializer=tf.random_uniform_initializer(-np.sqrt(6.0 / (n_hidden + 1)), np.sqrt(6.0 / (n_hidden + 1))),
-        regularizer=tf.contrib.layers.l2_regularizer(l2_reg)
-    )
-    inputs = tf.reshape(inputs, [-1, n_hidden])
-    tmp = tf.reshape(tf.matmul(inputs, u), [batch_size, 1, max_len])
-    alpha = softmax_with_len(tmp, length, max_len)
-    return alpha
-
-
-def mlp_attention_layer(inputs, length, n_hidden, l2_reg, random_base, layer_id=1):
-    """
-    :param inputs: batch * max_len * n_hidden
-    :param length: batch * 1
-    :param n_hidden:
-    :param l2_reg:
-    :param random_base:
-    :param layer_id: layer's identical id
-    :return: batch * 1 * max_len
-    """
-    batch_size = tf.shape(inputs)[0]
-    max_len = tf.shape(inputs)[1]
-    w = tf.get_variable(
-        name='att_w_' + str(layer_id),
-        shape=[n_hidden, n_hidden],
-        # initializer=tf.random_normal_initializer(mean=0., stddev=np.sqrt(2. / (n_hidden + n_hidden))),
-        initializer=tf.random_uniform_initializer(-random_base, random_base),
-        # initializer=tf.random_uniform_initializer(-np.sqrt(6.0 / (n_hidden + n_hidden)), np.sqrt(6.0 / (n_hidden + n_hidden))),
-        regularizer=tf.contrib.layers.l2_regularizer(l2_reg)
-    )
-    b = tf.get_variable(
-        name='att_b' + str(layer_id),
-        shape=[n_hidden],
-        # initializer=tf.random_normal_initializer(mean=0.0, stddev=np.sqrt(2. / (n_hidden + n_hidden))),
-        initializer=tf.random_uniform_initializer(-0., 0.),
-        regularizer=tf.contrib.layers.l2_regularizer(l2_reg)
-    )
-    u = tf.get_variable(
-        name='att_u_' + str(layer_id),
-        shape=[n_hidden, 1],
-        # initializer=tf.random_normal_initializer(mean=0., stddev=np.sqrt(2. / (n_hidden + 1))),
-        initializer=tf.random_uniform_initializer(-random_base, random_base),
-        # initializer=tf.random_uniform_initializer(-np.sqrt(6.0 / (n_hidden + 1)), np.sqrt(6.0 / (n_hidden + 1))),
-        regularizer=tf.contrib.layers.l2_regularizer(l2_reg)
-    )
-    inputs = tf.reshape(inputs, [-1, n_hidden])
-    tmp = tf.tanh(tf.matmul(inputs, w) + b)
-    tmp = tf.reshape(tf.matmul(tmp, u), [batch_size, 1, max_len])
-    alpha = softmax_with_len(tmp, length, max_len)
-    return alpha
 
 def cam_mlp_attention_layer(inputs, length, n_hidden, l2_reg, random_base, layer_id=1):
     """

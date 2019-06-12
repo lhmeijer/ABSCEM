@@ -14,8 +14,17 @@ data/internal_data/
 # model_savings
 data/model_savings/
 
+# hidden_layers
+data/hidden_layers/
+
 # results/abs_classifiers
 results/abs_classifiers/
+
+# results/diagnostic_classifiers
+results/diagnostic_classifiers/
+
+# results/local_interpretable_models
+results/local_interpretable_models/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

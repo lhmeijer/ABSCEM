@@ -7,33 +7,32 @@ from neural_network_layers.nn_layers import bi_dynamic_rnn, softmax_layer, reduc
 class LCRRotHopModel(NeuralLanguageModel):
 
     def __init__(self, config, internal_data_loader):
-        self.config = config
-        self.internal_data_loader = internal_data_loader
+        super().__init__(config, internal_data_loader)
 
     def model_itself(self, left_sentence_parts, left_sentence_lengths, right_sentence_parts, right_sentence_lengths,
-                     target_parts, target_lengths):
+                     target_parts, target_lengths, keep_prob1, keep_prob2):
 
         print('I am lcr rot hop.')
 
         _id = '_lcr_rot_hop'
 
-        cell = tf.keras.layers.LSTM
+        cell = tf.contrib.rnn.LSTMCell
 
-        rate = 1 - self.config.keep_prob1
+        rate = 1 - keep_prob1
 
         # left hidden states
         input_left = tf.nn.dropout(left_sentence_parts, rate=rate)
-        left_hidden_state = bi_dynamic_rnn(cell, input_left, self.config.number_hidden_units, left_sentence_lengths)
+        left_hidden_state = bi_dynamic_rnn(cell, input_left, self.config.number_hidden_units, left_sentence_lengths, 'l' + _id)
         pool_l = reduce_mean_with_len(left_hidden_state, left_sentence_lengths)
 
         # right hidden states
         input_right = tf.nn.dropout(right_sentence_parts, rate=rate)
-        right_hidden_state = bi_dynamic_rnn(cell, input_right, self.config.number_hidden_units, right_sentence_lengths)
+        right_hidden_state = bi_dynamic_rnn(cell, input_right, self.config.number_hidden_units, right_sentence_lengths, 'r' + _id)
         pool_r = reduce_mean_with_len(right_hidden_state, right_sentence_parts)
 
         # target hidden states
         target = tf.nn.dropout(target_parts, rate=rate)
-        target_hidden_state = bi_dynamic_rnn(cell, target, self.config.number_hidden_units, target_lengths)
+        target_hidden_state = bi_dynamic_rnn(cell, target, self.config.number_hidden_units, target_lengths, 't' + _id)
 
         # Pooling target hidden layer
         pool_t = reduce_mean_with_len(target_hidden_state, target_lengths)
@@ -47,36 +46,36 @@ class LCRRotHopModel(NeuralLanguageModel):
 
             # attention left
             att_l = attention_function(left_hidden_state, target_left_context_representation, left_sentence_lengths,
-                                       self.config.max_sentence_length, self.config.batch_size,
                                        2 * self.config.number_hidden_units, self.config.l2_regularization,
                                        self.config.random_base, 'att_l' + _id)
 
-            left_context_representation = tf.squeeze(tf.matmul(tf.transpose(att_l, perm=[0, 2, 1]), left_hidden_state))
+            weighted_left_hidden_state = tf.math.multiply(tf.transpose(att_l, perm=[0, 2, 1]), left_hidden_state)
+            left_context_representation = tf.squeeze(tf.matmul(att_l, left_hidden_state), [1])
 
             # attention right
             att_r = attention_function(right_hidden_state, target_right_context_representation, right_sentence_lengths,
-                                       self.config.max_sentence_length,self.config.batch_size,
                                        2 * self.config.number_hidden_units, self.config.l2_regularization,
                                        self.config.random_base, 'att_r' + _id)
 
-            right_context_representation = tf.squeeze(tf.matmul(tf.transpose(att_r, perm=[0, 2, 1]), right_hidden_state))
+            weighted_right_hidden_state = tf.math.multiply(tf.transpose(att_r, perm=[0, 2, 1]), right_hidden_state)
+            right_context_representation = tf.squeeze(tf.matmul(att_r, right_hidden_state), [1])
 
             # attention target
             att_t_l = attention_function(target_hidden_state, left_context_representation, target_lengths,
-                                         self.config.max_target_length, self.config.batch_size,
                                          2 * self.config.number_hidden_units, self.config.l2_regularization,
                                          self.config.random_base, 'att_t_l' + _id)
 
-            target_left_context_representation = tf.squeeze(tf.matmul(tf.transpose(att_t_l, perm=[0, 2, 1]),
-                                                                      target_hidden_state))
+            weighted_target_left_hidden_state = tf.math.multiply(tf.transpose(att_t_l, perm=[0, 2, 1]),
+                                                                 target_hidden_state)
+            target_left_context_representation = tf.squeeze(tf.matmul(att_t_l, target_hidden_state), [1])
 
             att_t_r = attention_function(target_hidden_state, right_context_representation, target_lengths,
-                                         self.config.max_target_length, self.config.batch_size,
                                          2 * self.config.number_hidden_units, self.config.l2_regularization,
                                          self.config.random_base, 'att_t_r' + _id)
 
-            target_right_context_representation = tf.squeeze(tf.matmul(tf.transpose(att_t_r, perm=[0, 2, 1]),
-                                                                       target_hidden_state))
+            weighted_target_right_hidden_state = tf.math.multiply(tf.transpose(att_t_r, perm=[0, 2, 1]),
+                                                                 target_hidden_state)
+            target_right_context_representation = tf.squeeze(tf.matmul(att_t_r, target_hidden_state), [1])
 
         sentence_representation = tf.concat([left_context_representation, target_left_context_representation,
                                              target_right_context_representation, right_context_representation], 1)
@@ -88,10 +87,10 @@ class LCRRotHopModel(NeuralLanguageModel):
             'left_hidden_state': left_hidden_state,
             'right_hidden_state': right_hidden_state,
             'target_hidden_state': target_hidden_state,
-            'left_context_representation': left_context_representation,
-            'right_context_representation': right_context_representation,
-            'target_left_context_representation': target_left_context_representation,
-            'target_right_context_representation': target_right_context_representation
+            'weighted_left_hidden_state': weighted_left_hidden_state,
+            'weighted_right_hidden_state': weighted_right_hidden_state,
+            'weighted_target_left_hidden_state': weighted_target_left_hidden_state,
+            'weighted_target_right_hidden_state': weighted_target_right_hidden_state
         }
 
         return prob, layer_information

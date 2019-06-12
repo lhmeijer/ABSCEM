@@ -5,19 +5,14 @@ import numpy as np
 
 class NeuralLanguageModel:
 
-    def __int__(self, config, internal_data_loader):
+    def __init__(self, config, internal_data_loader):
         self.config = config
         self.internal_data_loader = internal_data_loader
-
-    def model_itself(self, left_sentence_parts, left_sentence_lengths, right_sentence_parts, right_sentence_lengths,
-                     target_parts, target_lengths, keep_prob1, keep_prob2):
-        return None, None
-
-    def fit(self, x_train, y_train, train_aspects, x_test, y_test, test_aspects):
 
         self.keep_prob1 = tf.placeholder(tf.float32)
         self.keep_prob2 = tf.placeholder(tf.float32)
 
+        # with tf.name_scope('inputs'):
         self.left_part = tf.placeholder(tf.float32, [None, self.config.max_sentence_length,
                                                      self.config.embedding_dimension])
         self.left_sen_len = tf.placeholder(tf.int32, [None])
@@ -30,8 +25,6 @@ class NeuralLanguageModel:
                                                        self.config.embedding_dimension])
         self.tar_len = tf.placeholder(tf.int32, [None])
 
-        y = tf.placeholder(tf.float32, [None, self.config.number_of_classes])
-
         self.prob, self.layer_information = self.model_itself(left_sentence_parts=self.left_part,
                                                               left_sentence_lengths=self.left_sen_len,
                                                               right_sentence_parts=self.right_part,
@@ -40,19 +33,29 @@ class NeuralLanguageModel:
                                                               target_lengths=self.tar_len,
                                                               keep_prob1=self.keep_prob1, keep_prob2=self.keep_prob2)
 
+        self.global_step = tf.Variable(0, name='tr_global_step', trainable=False)
+        self.saver = tf.train.Saver(write_version=tf.train.SaverDef.V2, max_to_keep=1000)
+
+    def model_itself(self, left_sentence_parts, left_sentence_lengths, right_sentence_parts, right_sentence_lengths,
+                     target_parts, target_lengths, keep_prob1, keep_prob2):
+        return None, None
+
+    def fit(self, x_train, y_train, train_aspects, x_test, y_test, test_aspects):
+
+        y = tf.placeholder(tf.float32, [None, self.config.number_of_classes])
+
         loss = self.config.loss_function(y, self.prob)
         acc_num, acc_prob = self.config.accuracy_function(y, self.prob)
 
-        global_step = tf.Variable(0, name='tr_global_step', trainable=False)
-        optimizer = tf.train.MomentumOptimizer(learning_rate=self.config.learning_rate, momentum=self.config.momentum).minimize(loss, global_step=global_step)
+        optimizer = tf.train.MomentumOptimizer(learning_rate=self.config.learning_rate, momentum=self.config.momentum).\
+            minimize(loss, global_step=self.global_step)
 
         true_y = tf.argmax(y, 1)
         pred_y = tf.argmax(self.prob, 1)
 
-        self.saver = tf.train.Saver()
-
         tf_config = tf.ConfigProto(allow_soft_placement=True)
         tf_config.gpu_options.allow_growth = True
+
         with tf.Session(config=tf_config) as session:
 
             session.run(tf.global_variables_initializer())
@@ -89,14 +92,16 @@ class NeuralLanguageModel:
                 for train, train_num in get_batch_data(tr_left_part, tr_left_sen_len, tr_right_part, tr_right_sen_len,
                                                        y_train, tr_target_part, tr_tar_len, self.config.batch_size, self.config.keep_prob1, self.config.keep_prob2):
                     # print("train ", train)
-                    _, step, _train_acc, _true_y, _pred_y,  _prob, _layer_information = session.run([optimizer, global_step, acc_num, true_y, pred_y, self.prob, self.layer_information], feed_dict=train)
+                    _, step, _train_acc, _true_y, _pred_y,  _prob, _layer_information = session.run([optimizer, self.global_step, acc_num, true_y, pred_y, self.prob, self.layer_information], feed_dict=train)
                     # print("_layer_information ", _layer_information)
-                    print("_true_y ", _true_y)
-                    print("_pred_y ", _pred_y)
+                    # print("_true_y ", _true_y)
+                    # print("_pred_y ", _pred_y)
 
-                    print("_train_acc ", _train_acc)
+                    # print("_train_acc ", _train_acc)
                     train_acc += _train_acc
                     train_cnt += train_num
+
+                self.saver.save(session, self.config.file_to_save_model, global_step=step)
 
                 test_acc, test_cost, test_cnt = 0., 0., 0
                 true_y_s, pred_y_s, prob_s = [], [], []
@@ -104,9 +109,9 @@ class NeuralLanguageModel:
                                                      y_test, te_target_part, te_tar_len, 2000, 1.0, 1.0, False):
                     _loss, _test_acc, _true_y, _pred_y, _prob = session.run([loss, acc_num, true_y, pred_y, self.prob],
                                                                             feed_dict=test)
-                    true_y_s.append(_true_y)
-                    pred_y_s.append(_pred_y)
-                    prob_s.append(_prob)
+                    true_y_s.append(_true_y.tolist())
+                    pred_y_s.append(_pred_y.tolist())
+                    prob_s.append(_prob.tolist())
                     test_acc += _test_acc
                     test_cost += _loss * test_num
                     test_cnt += test_num
@@ -134,17 +139,17 @@ class NeuralLanguageModel:
                         'learning_rate': self.config.learning_rate,
                         'batch_size': self.config.batch_size,
                         'L2_regularization': self.config.l2_regularization,
-                        'number_hidden_units': self.config.number_hidden_units
+                        'number_hidden_units': self.config.number_hidden_units,
+                        'momentum': self.config.momentum,
+                        'keep_prob1': self.config.keep_prob1,
+                        'keep_prob2': self.config.keep_prob2
                     }
 
-            self.saver.save(session, self.config.file_to_save_model)
+            print("results ", results)
 
             return results
 
-    def predict(self, x, x_aspect):
-
-        x_left_part, x_target_part, x_right_part, x_left_sen_len, x_tar_len, x_right_sen_len = \
-            self.config.split_embeddings(x, x_aspect, self.config.max_sentence_length, self.config.max_target_length)
+    def predict(self, x_left_part, x_target_part, x_right_part, x_left_sen_len, x_tar_len, x_right_sen_len):
 
         feed_dict = {
             self.left_part: x_left_part,
@@ -153,11 +158,13 @@ class NeuralLanguageModel:
             self.right_sen_len: x_right_sen_len,
             self.target_part: x_target_part,
             self.tar_len: x_tar_len,
+            self.keep_prob1: 1.0,
+            self.keep_prob2: 1.0
         }
 
         with tf.Session() as session:
             # restore the model
-            self.saver.restore(session, self.config.file_to_save_model)
+            self.saver.restore(session, self.config.file_to_save_model+"-640")
             predictions, layer_information = session.run([self.prob, self.layer_information], feed_dict=feed_dict)
         return predictions, layer_information
 

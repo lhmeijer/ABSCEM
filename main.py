@@ -1,5 +1,5 @@
 from config import Config, OntologyConfig, CabascConfig, LCR_RotConfig, LCR_RotInverseConfig, LCR_RotHopConfig, \
-    DiagnosticClassifierConfig, LocalInterpretableConfig, SVMConfig
+    LocalInterpretableConfig, SVMConfig
 from data_setup.external_data_loader import ExternalDataLoader
 from data_setup.internal_data_loader import InternalDataLoader
 from abs_classifiers.ontology_reasoner import OntologyReasoner
@@ -17,7 +17,6 @@ def main():
 
     # Load external data if the internal files are not available
     if not os.path.isfile(Config.internal_train_data) or not os.path.isfile(Config.internal_test_data):
-        print("komt hierin")
         external_data_loader = ExternalDataLoader(Config)
         external_data_loader.load_external_data(load_external_file_name=Config.external_train_data,
                                                 write_internal_file_name=Config.internal_train_data)
@@ -58,7 +57,7 @@ def main():
     }
 
     # Local Interpretable model, do you want it on or off, please set up the configuration in config.py
-    local_interpretable_model = False
+    local_interpretable_model = True
 
     if ontology:
 
@@ -83,14 +82,17 @@ def main():
 
     if lcr_rot:
         lcr_rot_model = LCRRot(LCR_RotConfig, internal_data_loader)
-        lcr_rot_model.run()
 
-        if True in diagnostic_classifiers:
+        # if not os.path.isfile(lcr_rot_model.config.file_to_save_model):
+        # lcr_rot_model.run()
+
+        if True in diagnostic_classifiers.values():
             diagnostic_classifier = DiagnosticClassifier(lcr_rot_model)
             diagnostic_classifier.run(diagnostic_classifiers)
 
         if local_interpretable_model:
             local_interpretable_model = LocalInterpretableModel(LocalInterpretableConfig, lcr_rot_model)
+            local_interpretable_model.run()
 
     if lcr_rot_inverse:
 

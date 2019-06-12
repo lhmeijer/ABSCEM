@@ -1,9 +1,12 @@
 import tensorflow as tf
 import numpy as np
 from diagnostic_classifier.classifiers import SingleMLPClassifier
+from local_interpretable_model.attribute_evaluator import LASSORegression, PredictionDifference
+from local_interpretable_model.locality_algorithms import Perturbing
+from local_interpretable_model.rule_based_classifier import RuleBasedClassifier
 
 
-class Config():
+class Config:
 
     year = 2015
     embedding_dimension = 300
@@ -52,13 +55,8 @@ class NeuralLanguageModelConfig(Config):
 
     @staticmethod
     def loss_function(y, prob):
-        print("y ", y)
-        print("prob ", prob)
         regularization_loss = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
-        # loss = - tf.reduce_mean(y * tf.log(prob + 1e-40)) + tf.reduce_sum(regularization_loss)
-        cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=y, logits=prob))
-        loss = cross_entropy + tf.reduce_sum(regularization_loss)
-        print("loss ", loss)
+        loss = - tf.reduce_mean(y * tf.log(prob + 1e-40)) + tf.reduce_sum(regularization_loss)
         return loss
 
     @staticmethod
@@ -122,11 +120,11 @@ class LCR_RotConfig(NeuralLanguageModelConfig):
     batch_size = 20
     number_hidden_units = 300
     l2_regularization = 0.001
-    number_of_iterations = 50
+    number_of_iterations = 10
     max_sentence_length = 80
     max_target_length = 19
     number_of_classes = 3
-    learning_rate = 0.01
+    learning_rate = 0.07
     momentum = 0.9
     keep_prob1 = 0.5
     keep_prob2 = 0.5
@@ -134,7 +132,10 @@ class LCR_RotConfig(NeuralLanguageModelConfig):
 
     file_of_results = "results/abs_classifiers/" + str(Config.year) + "/" + name_of_model + ".json"
     file_of_cross_val_results = "results/abs_classifiers/" + str(Config.year) + "/cross_val_" + name_of_model + "json"
-    file_to_save_model = "data/model_savings/LCR_Rot_model_" + str(Config.year) + "_tf.model"
+    file_to_save_model = "data/model_savings/LCR_Rot_model_" + str(Config.year) + "/tf.model"
+
+    tr_file_of_hidden_layers = "data/hidden_layers/" + str(Config.year) + "/training_" + name_of_model + ".json"
+    te_file_of_hidden_layers = "data/hidden_layers/" + str(Config.year) + "/test_" + name_of_model + ".json"
 
     @staticmethod
     def split_embeddings(word_embeddings, aspect_indices, max_sentence_length, max_target_length):
@@ -186,30 +187,33 @@ class LCR_RotHopConfig(LCR_RotConfig):
 class DiagnosticClassifierPOSConfig(Config):
 
     neural_language_model = NeuralLanguageModelConfig
-    name_of_model = "diagnostic classifier or ontology mentions"
+    name_of_model = "diagnostic classifier for ontology mentions"
     classifier = SingleMLPClassifier(
         learning_rate=0.001,
-        hidden_layers=300,
+        number_hidden_units=300,
         number_of_epochs=100,
         keep_prob=0.8,
-        batch_size=20
+        batch_size=20,
+        random_base=0.1,
+        model_name=name_of_model
     )
 
     file_of_results = "results/diagnostic_classifiers/" + str(Config.year) + "/" + \
                                              neural_language_model.name_of_model + \
                                              "_part_of_speech_tagging.json"
 
-
 class DiagnosticClassifierPolarityConfig(Config):
 
-    name_of_model = "diagnostic classifier or ontology mentions"
+    name_of_model = "diagnostic classifier for ontology mentions"
     neural_language_model = NeuralLanguageModelConfig
     classifier = SingleMLPClassifier(
         learning_rate=0.001,
-        hidden_layers=300,
+        number_hidden_units=500,
         number_of_epochs=100,
         keep_prob=0.8,
-        batch_size=20
+        batch_size=20,
+        random_base=0.1,
+        model_name=name_of_model
     )
 
     file_of_results = "results/diagnostic_classifiers/" + str(Config.year) + "/" + neural_language_model.name_of_model \
@@ -218,14 +222,16 @@ class DiagnosticClassifierPolarityConfig(Config):
 
 class DiagnosticClassifierRelationConfig(Config):
 
-    name_of_model = "diagnostic classifier or ontology mentions"
+    name_of_model = "diagnostic classifier for ontology mentions"
     neural_language_model = NeuralLanguageModelConfig
     classifier = SingleMLPClassifier(
         learning_rate=0.001,
-        hidden_layers=300,
+        number_hidden_units=300,
         number_of_epochs=100,
         keep_prob=0.8,
-        batch_size=20
+        batch_size=20,
+        random_base=0.1,
+        model_name=name_of_model
     )
 
     file_of_results = "results/diagnostic_classifiers/" + str(Config.year) + "/" + \
@@ -235,14 +241,16 @@ class DiagnosticClassifierRelationConfig(Config):
 
 class DiagnosticClassifierMentionConfig(Config):
 
-    name_of_model = "diagnostic classifier or ontology mentions"
+    name_of_model = "diagnostic classifier for ontology mentions"
     neural_language_model = NeuralLanguageModelConfig
     classifier = SingleMLPClassifier(
         learning_rate=0.001,
-        hidden_layers=300,
+        number_hidden_units=300,
         number_of_epochs=100,
         keep_prob=0.8,
-        batch_size=20
+        batch_size=20,
+        random_base=0.1,
+        model_name=name_of_model
     )
 
     file_of_results = "results/diagnostic_classifiers/" + str(Config.year) + "/" + \
@@ -252,6 +260,23 @@ class DiagnosticClassifierMentionConfig(Config):
 
 class LocalInterpretableConfig(Config):
 
-    # classifier to compute word relevance
-    LASSO_regression = True
-    prediction_difference = False
+    name_of_model = "Local Interpretable model"
+
+    # algorithm to calculate the neighbours of a instance
+    locality_model_name = "perturbing"
+    locality_model = Perturbing(10)
+
+    # rule based classifier
+    rule_based_classifier_name = "C4.5"
+    rule_based_classifier = RuleBasedClassifier(0.90, 5)
+
+    # classifier to compute word relevance, lasso regression or prediction difference
+    alpha = 0.05
+    attribute_evaluator_name = "lasso_regression_with_alpha_" + str(alpha)
+    attribute_evaluator = LASSORegression(alpha)
+
+    # attribute_evaluator_name = "prediction difference"
+    # attribute_evaluator = PredictionDifference()
+
+    file_of_results = "results/local_interpretable_models/" + str(Config.year) + "/" + locality_model_name + "_" + \
+                      rule_based_classifier_name + ".json"

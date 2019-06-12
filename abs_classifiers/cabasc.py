@@ -1,7 +1,8 @@
 from abs_classifiers.neural_language_model import NeuralLanguageModel
 import tensorflow as tf
-from neural_network_layers.nn_layers import dynamic_rnn, softmax_layer
-from neural_network_layers.attention_layers import cam_mlp_attention_layer, triple_attention_layer, mlp_layer
+from neural_network_layers.nn_layers import dynamic_rnn, softmax_layer, bi_dynamic_rnn, reduce_mean_with_len
+from neural_network_layers.attention_layers import Mlp_attention_layer, cam_mlp_attention_layer, mlp_layer, triple_attention_layer
+
 
 
 class CABASCModel(NeuralLanguageModel):
