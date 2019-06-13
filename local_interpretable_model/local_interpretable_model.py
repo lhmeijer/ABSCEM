@@ -43,32 +43,33 @@ class LocalInterpretableModel:
                                                                                                    lemmatized_sentence
                                                                                                    [index])
 
-            word_relevance = []
-
-            if isinstance(self.config.attribute_evaluator, LASSORegression):
-
-                word_relevance = self.config.attribute_evaluator.evaluate_attributes(attributes_indices, x_neighbours,
-                                                                                     y_neighbours)
-
-            elif isinstance(self.config.attribute_evaluator, PredictionDifference):
-
-                word_relevance = self.config.attribute_evaluator.evaluate_attributes(attributes_indices, x_test[index],
-                                                                                     test_aspects[index],
-                                                                                     self.neural_language_model)
-            result = {
-                'lemmatized_sentence': lemmatized_sentence[index],
-                'aspects': aspects[index],
-                'aspect_category_matrix': aspects_categories[index],
-                'aspect_polarity_matrix': aspects_polarities[index],
-                'attribute_indices': attributes_indices,
-                'attirbute_words': attributes_words,
-                'word_relevance': word_relevance
-            }
-
-            results.append(result)
-
-        with open(self.config.file_of_results, 'w') as outfile:
-            json.dump(results, outfile, ensure_ascii=False)
+        #     word_relevance = []
+        #
+        #     if isinstance(self.config.attribute_evaluator, LASSORegression):
+        #
+        #         word_relevance = self.config.attribute_evaluator.evaluate_attributes(attributes_indices, x_neighbours,
+        #                                                                              y_neighbours,
+        #                                                                              aspects_polarities[index])
+        #
+        #     elif isinstance(self.config.attribute_evaluator, PredictionDifference):
+        #
+        #         word_relevance = self.config.attribute_evaluator.evaluate_attributes(attributes_indices, x[index],
+        #                                                                              aspects_indices[index],
+        #                                                                              self.neural_language_model)
+        #     result = {
+        #         'lemmatized_sentence': lemmatized_sentence[index],
+        #         'aspects': aspects[index],
+        #         'aspect_category_matrix': aspects_categories[index],
+        #         'aspect_polarity_matrix': aspects_polarities[index],
+        #         'attribute_indices': attributes_indices,
+        #         'attirbute_words': attributes_words,
+        #         'word_relevance': word_relevance
+        #     }
+        #
+        #     results.append(result)
+        #
+        # with open(self.config.file_of_results, 'w') as outfile:
+        #     json.dump(results, outfile, ensure_ascii=False)
 
 
 

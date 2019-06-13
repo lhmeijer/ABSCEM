@@ -271,12 +271,12 @@ class LocalInterpretableConfig(Config):
     rule_based_classifier = RuleBasedClassifier(0.90, 5)
 
     # classifier to compute word relevance, lasso regression or prediction difference
-    alpha = 0.05
-    attribute_evaluator_name = "lasso_regression_with_alpha_" + str(alpha)
-    attribute_evaluator = LASSORegression(alpha)
+    # alpha = 0.05
+    # attribute_evaluator_name = "lasso_regression_with_alpha_" + str(alpha)
+    # attribute_evaluator = LASSORegression(alpha)
 
-    # attribute_evaluator_name = "prediction difference"
-    # attribute_evaluator = PredictionDifference()
+    attribute_evaluator_name = "prediction difference"
+    attribute_evaluator = PredictionDifference()
 
     file_of_results = "results/local_interpretable_models/" + str(Config.year) + "/" + locality_model_name + "_" + \
                       rule_based_classifier_name + ".json"
