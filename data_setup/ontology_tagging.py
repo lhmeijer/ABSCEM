@@ -1,13 +1,4 @@
 import owlready2 as owl
-# from nltk.parse.stanford import StanfordDependencyParser
-import nltk
-import os
-
-
-# path to the java runtime environment
-# nltk.internals.config_java('/usr/bin/java')
-# java_path = '/usr/bin/java'
-# os.environ['JAVAHOME'] = java_path
 
 
 class OntologyTagging:
@@ -37,7 +28,8 @@ class OntologyTagging:
 
         return word_classes
 
-    def polarity_and_aspect_relation_tagging(self, ontology_classes_of_sentence, aspect_indices, aspect_categories):
+    def polarity_and_aspect_relation_tagging(self, ontology_classes_of_sentence, aspect_indices, aspect_categories,
+                                             aspect_dependencies):
 
         number_words_in_sentence = len(ontology_classes_of_sentence)
         number_of_aspects = len(aspect_indices)
@@ -58,9 +50,7 @@ class OntologyTagging:
                 for index in range(1, aspect_length):
 
                     next_indices = aspect_indices[aspect_index][index]
-                    print("next_indices ", next_indices)
-                    print("aspect_class ", aspect_class)
-                    print("ontology_classes_of_sentence[next_indices] ", ontology_classes_of_sentence[next_indices])
+
                     if aspect_class is not None and ontology_classes_of_sentence[next_indices] is not None:
 
                         aspect_class = owl.types.new_class(aspect_class.__name__ +
@@ -75,10 +65,18 @@ class OntologyTagging:
                 if word_index not in aspect_indices[aspect_index]:
                     word_class = ontology_classes_of_sentence[word_index]
                     category = aspect_categories[aspect_index]
-                    relation, polarity = self.relation_between_word_aspect(word_class, category, aspect_class)
+                    aspect_dependency = aspect_dependencies[aspect_index][word_index]
+                    relation, polarity = self.relation_between_word_aspect(word_class, category, aspect_class,
+                                                                           aspect_dependency)
                 else:
-                    polarity = "AspectPolarity"
-                    relation = False
+                    polarity = [1, 0, 0]
+
+                    # an aspect can have a relation with another aspect
+                    if aspect_dependencies[aspect_index][word_index] != 'no':
+                        relation = [1, 0]
+                    else:
+                        relation = [0, 1]
+
                 polarities.append(polarity)
                 relations.append(relation)
 
@@ -87,10 +85,16 @@ class OntologyTagging:
 
         return polarities_sentence, relations_sentence
 
-    def relation_between_word_aspect(self, word_class, category, aspect_class):
+    def relation_between_word_aspect(self, word_class, category, aspect_class, aspect_dependency):
+
+        if aspect_dependency != 'no':
+            aspect_relation = [1, 0]
+        else:
+            aspect_relation = [0, 1]
 
         if word_class is None:
-            return False, "NoPolarity"
+            # aspect_relation, UnknownPolarity
+            return aspect_relation, [1, 0, 0]
 
         positive_class = self.ontology.search(iri='*Positive')[0]
         negative_class = self.ontology.search(iri='*Negative')[0]
@@ -100,23 +104,29 @@ class OntologyTagging:
         if self.ontology.PropertyMention in sub_classes:
 
             if self.ontology.GenericNegativePropertyMention in sub_classes:
-                return True, "Negative"
+                # True, Negative
+                return [1, 0], [0, 1, 0]
             elif self.ontology.GenericPositivePropertyMention in sub_classes:
-                return True, "Positive"
+                # True, Positive
+                return [1, 0], [0, 0, 1]
             elif self.ontology.Positive in sub_classes:
                 for c in sub_classes:
                     if c == owl.Thing:
                         continue
                     elif category in c.aspect:
-                        return True, "Positive"
-                return False, "NoPropertyPolarity"
+                        # True, Positive
+                        return [1, 0], [0, 0, 1]
+                # aspect_relation, UnknownPolarity
+                return aspect_relation, [1, 0, 0]
             elif self.ontology.Negative in sub_classes:
                 for c in sub_classes:
                     if c == owl.Thing:
                         continue
                     elif category in c.aspect:
-                        return True, "Negative"
-                return False, "NoPropertyPolarity"
+                        # True, Negative
+                        return [1, 0], [0, 1, 0]
+                # aspect_relation, UnknownPolarity
+                return aspect_relation, [1, 0, 0]
             else:
                 if aspect_class is not None:
                     word_class = owl.types.new_class(word_class.__name__ + aspect_class.__name__,
@@ -126,47 +136,86 @@ class OntologyTagging:
                 negative = negative_class.__subclasscheck__(word_class)
 
                 if positive and not negative:
-                    return True, "Positive"
+                    # True Positive
+                    return [1, 0], [0, 0, 1]
                 elif not positive and negative:
-                    return True, "Negative"
+                    # True Negative
+                    return [1, 0], [0, 1, 0]
                 elif positive and negative:
-                    return True, "UnknownPropertyPolarity"
+                    # True UnknownPolarity
+                    return [1, 0], [1, 0, 0]
                 else:
-                    return False, "NoPropertyPolarity"
+                    # aspect_relation, UnknownPolarity
+                    return aspect_relation, [1, 0, 0]
 
         elif self.ontology.ActionMention in sub_classes:
 
             if self.ontology.GenericNegativeAction in sub_classes:
-                return True, "Negative"
+                # True, Negative
+                return [1, 0], [0, 1, 0]
             elif self.ontology.GenericPositiveAction in sub_classes:
-                return True, "Positive"
+                # True, Positive
+                return [1, 0], [0, 0, 1]
             elif self.ontology.Positive in sub_classes:
                 for c in sub_classes:
                     if c == owl.Thing:
                         continue
                     elif category in c.aspect:
-                        return True, "Positive"
-                return False, "NoActionPolarity"
+                        # True, Positive
+                        return [1, 0], [0, 0, 1]
+                # aspect_relation, UnknownPolarity
+                return aspect_relation, [1, 0, 0]
             elif self.ontology.Negative in sub_classes:
                 for c in sub_classes:
                     if c == owl.Thing:
                         continue
                     elif category in c.aspect:
-                        return True, "Negative"
-                return False, "NoActionPolarity"
+                        # True Negative
+                        return [1, 0], [0, 1, 0]
+                # aspect_relation, UnknownPolarity
+                return aspect_relation, [1, 0, 0]
             else:
-                raise Exception("Error in ActionMention ", sub_classes)
+                for c in sub_classes:
+                    if c == owl.Thing:
+                        continue
+                    elif category in c.aspect:
+                        # True UnknownPolarity
+                        return [1, 0], [1, 0, 0]
+                # aspect_relation, UnknownPolarity
+                return aspect_relation, [1, 0, 0]
 
         elif self.ontology.EntityMention in sub_classes:
 
-            for c in sub_classes:
-                if c == owl.Thing:
-                    continue
-                elif category in c.aspect:
-                    return True, "EntityPolarity"
-            return False, "NoEntityPolarity"
+            if self.ontology.Positive in sub_classes:
+                for c in sub_classes:
+                    if c == owl.Thing:
+                        continue
+                    elif category in c.aspect:
+                        # True Positive
+                        return [1, 0], [0, 0, 1]
+                # aspect_relation, UnknownPolarity
+                return aspect_relation, [1, 0, 0]
+            elif self.ontology.Negative in sub_classes:
+                for c in sub_classes:
+                    if c == owl.Thing:
+                        continue
+                    elif category in c.aspect:
+                        # True Negative
+                        return [1, 0], [0, 1, 0]
+                # aspect_relation, UnknownPolarity
+                return aspect_relation, [1, 0, 0]
+            else:
+                for c in sub_classes:
+                    if c == owl.Thing:
+                        continue
+                    elif category in c.aspect:
+                        # True UnknownPolarity
+                        return [1, 0], [1, 0, 0]
+                # aspect_relation, UnknownPolarity
+                return aspect_relation, [1, 0, 0]
         else:
-            return False, "UnknownPolarity"
+            # aspect_relation, UnknownPolarity
+            return aspect_relation, [1, 0, 0]
 
     def mention_tagging(self, ontology_classes_sentence):
 
@@ -176,53 +225,50 @@ class OntologyTagging:
         for word_index in range(words_of_sentence):
 
             if ontology_classes_sentence[word_index] is None:
-                mentions.append("NoMention")
+                # UnknownMention
+                mentions.append([1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
                 continue
 
             sub_classes = ontology_classes_sentence[word_index].ancestors()
 
             if self.ontology.PropertyMention in sub_classes:
-                mentions.append("PropertyMention")
+                # PropertyMention
+                mentions.append([0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
             elif self.ontology.PersonMention in sub_classes:
-                mentions.append("PersonMention")
-            elif self.ontology.ServiceMention in sub_classes:
-                mentions.append("ServiceMention")
+                # PersonMention
+                mentions.append([0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
             elif self.ontology.ActionMention in sub_classes:
-                mentions.append("ActionMention")
+                # ActionMention
+                mentions.append([0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+            elif self.ontology.ServiceMention in sub_classes:
+                # ServiceMention
+                mentions.append([0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0])
             elif self.ontology.AmbienceMention in sub_classes:
-                mentions.append("AmbienceMention")
+                # AmbienceMention
+                mentions.append([0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0])
             elif self.ontology.LocationMention in sub_classes:
-                mentions.append("LocationMention")
+                # LocationMention
+                mentions.append([0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0])
             elif self.ontology.RestaurantMention in sub_classes:
-                mentions.append("RestaurantMention")
+                # RestaurantMention
+                mentions.append([0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0])
             elif self.ontology.PriceMention in sub_classes:
-                mentions.append("PriceMention")
+                # PriceMention
+                mentions.append([0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0])
             elif self.ontology.StyleOptionsMention in sub_classes:
-                mentions.append("StyleOptionsMention")
+                # StyleOptionsMention
+                mentions.append([0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0])
             elif self.ontology.ExperienceMention in sub_classes:
-                mentions.append("ExperienceMention")
+                # ExperienceMention
+                mentions.append([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0])
             elif self.ontology.SustenanceMention in sub_classes:
-                mentions.append("SustenanceMention")
+                # SustenanceMention
+                mentions.append([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0])
             elif self.ontology.TimeMention in sub_classes:
-                mentions.append("TimeMention")
+                # TimeMention
+                mentions.append([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1])
             else:
-                mentions.append("UnknownMention")
+                # UnknownMention
+                mentions.append([1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
         return mentions
 
-    # def negation_tagging(self, lemmatized_sentence):
-    #
-    #     # negation check with window and dependency graph
-    #     path_to_jar = 'data/external_data/stanford-parser-full-2018-02-27/stanford-parser.jar'
-    #     path_to_models_jar = 'data/external_data/stanford-parser-full-2018-02-27/stanford-parser-3.9.1-models.jar'
-    #
-    #     dependency_parser = StanfordDependencyParser(path_to_jar=path_to_jar, path_to_models_jar=path_to_models_jar)
-    #
-    #     negations = ['not', 'n\'t', 'never']
-    #     results = dependency_parser.raw_parse(' '.join(lemmatized_sentence))
-    #     print("results ", results)
-    #     dep = results.__next__()
-    #     print("dep ", dep)
-    #     result = list(dep.triples())
-    #     print("result ", result)
-    #     print("triple[0][0] ", result[0][0][0])
-    #     print("triple[0][1] ", result[0][1])

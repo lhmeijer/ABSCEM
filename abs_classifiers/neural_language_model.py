@@ -101,8 +101,6 @@ class NeuralLanguageModel:
                     train_acc += _train_acc
                     train_cnt += train_num
 
-                self.saver.save(session, self.config.file_to_save_model, global_step=step)
-
                 test_acc, test_cost, test_cnt = 0., 0., 0
                 true_y_s, pred_y_s, prob_s = [], [], []
                 for test, test_num in get_batch_data(te_left_part, te_left_sen_len, te_right_part, te_right_sen_len,
@@ -145,7 +143,7 @@ class NeuralLanguageModel:
                         'keep_prob2': self.config.keep_prob2
                     }
 
-            print("results ", results)
+            self.saver.save(session, self.config.file_to_save_model)
 
             return results
 
@@ -164,7 +162,7 @@ class NeuralLanguageModel:
 
         with tf.Session() as session:
             # restore the model
-            self.saver.restore(session, self.config.file_to_save_model+"-640")
+            self.saver.restore(session, self.config.file_to_save_model)
             predictions, layer_information = session.run([self.prob, self.layer_information], feed_dict=feed_dict)
         return predictions, layer_information
 

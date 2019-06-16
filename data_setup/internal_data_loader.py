@@ -12,11 +12,9 @@ class InternalDataLoader:
         self.total_word_in_training = []
         self.lemmatized_training = []
         self.word_embeddings_training_all = []
-        self.word_embeddings_training_only = []
         self.sentiment_distribution_training = []
         self.part_of_speech_training = []
         self.negation_in_training = []
-        self.aspect_dependencies_training = []
         self.word_mentions_training = []
         self.word_polarities_training = []
         self.word_relations_training = []
@@ -28,9 +26,7 @@ class InternalDataLoader:
         self.total_word_in_test = []
         self.lemmatized_test = []
         self.word_embeddings_test_all = []
-        self.word_embeddings_test_only = []
         self.sentiment_distribution_test = []
-        self.aspect_dependencies_test = []
         self.part_of_speech_test = []
         self.negation_in_test = []
         self.word_mentions_test = []
@@ -52,9 +48,8 @@ class InternalDataLoader:
 
                 for sentence in sentences:
 
-                    self.word_embeddings_training_only.append(sentence['word_embeddings'])
-
                     for n_aspects in range(len(sentence['aspects'])):
+
                         number_of_words = sentence['lemmatized_sentence']
                         self.total_word_in_training.append(number_of_words)
 
@@ -67,9 +62,9 @@ class InternalDataLoader:
                         self.word_embeddings_training_all.append(sentence['word_embeddings'])
                         self.sentiment_distribution_training.append(sentence['sentiment_distribution'])
                         self.negation_in_training.append(sentence['negation_in_sentence'])
-                        self.aspect_dependencies_training.append(sentence['aspect_dependencies'][n_aspects])
-                        self.word_mentions_training.append(sentence['word_mentions'][n_aspects])
+                        self.word_mentions_training.append(sentence['word_mentions'])
                         self.word_polarities_training.append(sentence['word_polarities'][n_aspects])
+                        self.aspects_training.append(sentence['aspects'][n_aspects])
                         self.word_relations_training.append(sentence['aspect_relations'][n_aspects])
                         self.aspect_indices_training.append(sentence['aspect_indices'][n_aspects])
                         self.polarity_matrix_training.append(sentence['polarity_matrix'][n_aspects])
@@ -87,9 +82,9 @@ class InternalDataLoader:
             for line in file:
                 sentences = json.loads(line)
                 for sentence in sentences:
-                    self.word_embeddings_test_only.append(sentence['word_embeddings'])
 
                     for n_aspects in range(len(sentence['aspects'])):
+
                         number_of_words = sentence['lemmatized_sentence']
                         self.total_word_in_test.append(number_of_words)
 
@@ -102,9 +97,9 @@ class InternalDataLoader:
                         self.word_embeddings_test_all.append(sentence['word_embeddings'])
                         self.sentiment_distribution_test.append(sentence['sentiment_distribution'])
                         self.negation_in_test.append(sentence['negation_in_sentence'])
-                        self.aspect_dependencies_test.append(sentence['aspect_dependencies'][n_aspects])
-                        self.word_mentions_test.append(sentence['word_mentions'][n_aspects])
+                        self.word_mentions_test.append(sentence['word_mentions'])
                         self.word_polarities_test.append(sentence['word_polarities'][n_aspects])
+                        self.aspects_test.append(sentence['aspects'][n_aspects])
                         self.word_relations_test.append(sentence['aspect_relations'][n_aspects])
                         self.aspect_indices_test.append(sentence['aspect_indices'][n_aspects])
                         self.polarity_matrix_test.append(sentence['polarity_matrix'][n_aspects])

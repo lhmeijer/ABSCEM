@@ -18,8 +18,27 @@ class ExternalDataLoader:
         self.config = config
         self.word_dictionary = self.compute_all_embeddings()
         self.server_url = 'http://localhost:9000'
-        self.parser = CoreNLPParser(url='http://localhost:9000')
-        self.core_nlp_dependency_parser = CoreNLPDependencyParser(url='http://localhost:9000')
+        self.parser = CoreNLPParser(url=self.server_url)
+        self.core_nlp_dependency_parser = CoreNLPDependencyParser(url=self.server_url)
+
+        self.positive_counter = 0
+        self.negative_counter = 0
+        self.neutral_counter = 0
+
+        self.ambience_general_counter = 0
+        self.drinks_prices_counter = 0
+        self.drinks_quality_counter = 0
+        self.drinks_style_options_counter = 0
+        self.food_general = 0
+        self.food_prices = 0
+        self.food_quality = 0
+        self.food_category = 0
+        self.location_general = 0
+        self.location_general = 0
+        self.restaurant_general = 0
+        self.restaurant_miscellaneous = 0
+        self.restaurant_prices = 0
+        self.service_general = 0
 
     def load_external_data(self, load_external_file_name, write_internal_file_name):
 
@@ -39,11 +58,7 @@ class ExternalDataLoader:
 
             original_sentence = sentence.find('text').text
 
-            print("original_sentence ", original_sentence)
-
             tokenized_sentence = list(self.parser.tokenize(original_sentence))
-
-            print("tokenized_sentence ", tokenized_sentence)
 
             aspects = []
             aspect_indices = []
@@ -58,11 +73,13 @@ class ExternalDataLoader:
 
                     aspect = opinion.get('target')
                     if aspect != "NULL":
+
                         opinion_counter += 1
 
                         aspects.append(aspect)
                         category = opinion.get('category')
                         polarity = opinion.get('polarity')
+
                         categories.append(category)
                         polarities.append(polarity)
 
@@ -73,20 +90,21 @@ class ExternalDataLoader:
 
             if len(aspects) != 0:
 
-                print("opinion_counter ", opinion_counter)
-
-                sentiment_distribution = self.annotate(original_sentence,
-                                                properties={"annotators": "sentiment",
-                                                            "outputFormat": "json", })
+                sentiment_distribution = self.annotate(original_sentence, properties={"annotators": "sentiment",
+                                                                                      "outputFormat": "json", })
 
                 processed_sentence = self.process_characters(tokenized_sentence)
+
                 lemmatized_sentence, part_of_speech_sentence, aspect_dependencies, sentence_negation = \
                     self.lemmatize_and_pos_tagging(processed_sentence, aspect_indices)
+
                 ontology_classes_sentence = self.ontology_tagging.ontology_classes_tagging(lemmatized_sentence)
-                print("ontology_classes_sentence ", ontology_classes_sentence)
+
                 word_mention_sentence = self.ontology_tagging.mention_tagging(ontology_classes_sentence)
+
                 word_polarity_sentence, aspect_relation_sentence = self.ontology_tagging.\
-                    polarity_and_aspect_relation_tagging(ontology_classes_sentence, aspect_indices, categories)
+                    polarity_and_aspect_relation_tagging(ontology_classes_sentence, aspect_indices, categories,
+                                                         aspect_dependencies)
 
                 word_embedding_sentence = self.compute_word_embeddings(lemmatized_sentence)
 
@@ -100,7 +118,6 @@ class ExternalDataLoader:
                     'word_polarities': word_polarity_sentence,
                     'word_mentions': word_mention_sentence,
                     'aspect_relations': aspect_relation_sentence,
-                    'aspect_dependencies': aspect_dependencies,
                     'aspects': aspects,
                     'aspect_indices': aspect_indices,
                     'polarities': polarities,
@@ -111,49 +128,68 @@ class ExternalDataLoader:
                 }
                 all_sentences.append(dict_sentence)
 
+        print("Number of data points in the sample ", opinion_counter)
+        print("Number of positive data points ", self.positive_counter)
+        print("Number of neutral data points ", self.neutral_counter)
+        print("Number of negative data points ", self.negative_counter)
+
         with open(write_internal_file_name, 'w') as outfile:
             json.dump(all_sentences, outfile, ensure_ascii=False)
 
-    @staticmethod
-    def get_polarity_number(polarity):
+    def get_polarity_number(self, polarity):
 
         if polarity == "positive":
+            self.positive_counter += 1
             return [1, 0, 0]
         elif polarity == "neutral":
+            self.neutral_counter += 1
             return [0, 1, 0]
         elif polarity == "negative":
+            self.negative_counter += 1
             return [0, 0, 1]
         else:
             raise Exception("Polarity ", polarity, " is not in the sentence.")
 
-    @staticmethod
-    def get_category_number(category):
+    def get_category_number(self, category):
 
         if category == "AMBIENCE#GENERAL":
+            self.ambience_general_counter += 1
             return [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         elif category == "DRINKS#PRICES":
+            self.drinks_prices_counter += 1
             return [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         elif category == "DRINKS#QUALITY":
+            self.drinks_quality_counter += 1
             return [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         elif category == "DRINKS#STYLE_OPTIONS":
+            self.drinks_style_options_counter += 1
             return [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         elif category == "FOOD#GENERAL":
+            self.food_general += 1
             return [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0]
         elif category == "FOOD#PRICES":
+            self.food_prices += 1
             return [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]
         elif category == "FOOD#QUALITY":
+            self.food_quality += 1
             return [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0]
         elif category == "FOOD#STYLE_OPTIONS":
+            self.food_category += 1
             return [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0]
         elif category == "LOCATION#GENERAL":
+            self.location_general += 1
             return [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0]
         elif category == "RESTAURANT#GENERAL":
+            self.restaurant_general += 1
             return [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0]
         elif category == "RESTAURANT#MISCELLANEOUS":
+            self.restaurant_miscellaneous += 1
             return [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0]
         elif category == "RESTAURANT#PRICES":
+            self.restaurant_prices += 1
             return [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0]
         elif category == "SERVICE#GENERAL":
+            self.service_general += 1
             return [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
         else:
             raise Exception("Category ", category, " is not in the sentence.")
@@ -210,8 +246,6 @@ class ExternalDataLoader:
 
             list_of_word = list(sentence[word_index].lower())
 
-            # if len(sentence[word_index]) > 1:
-
             for char_index in range(len(list_of_word)-1):
 
                 if list_of_word[char_index] in punctuation_to_be_replaced:
@@ -221,17 +255,12 @@ class ExternalDataLoader:
                     list_of_word[char_index+1] = ''
                 elif list_of_word[char_index] in punctuation_and_numbers and list_of_word[char_index + 1] in alphabet:
                     list_of_word[char_index] = ''
-            # else:
-            #     if list_of_word[0] == '’':
-            #         list_of_word[0] = '\''
-            #     elif list_of_word[0] == '–':
-            #         list_of_word[0] = '-'
 
             word = "".join(list_of_word)
             if word == '.' and sentence[word_index-1] == '.':
                 pass
             else:
-                if word == '.......' or word == '....' or word == '.....' or word == '......':
+                if word == '.......' or word == '....' or word == '.....' or word == '......' or word == '..':
                     word = '...'
                 processed_sentence.append(word)
         return processed_sentence
@@ -242,10 +271,8 @@ class ExternalDataLoader:
                         '!', '\'', '-']
 
         parses = self.core_nlp_dependency_parser.parse(sentence)
-        print("processed_sentence ", sentence)
-        dependencies = [[(governor, dep, dependent) for governor, dep, dependent in parse.triples()] for parse in parses][0]
-        print("dependencies ", dependencies)
-        #[[(('What', 'WP'), 'cop', ('is', 'VBZ')), (('What', 'WP'), 'nsubj', ('airspeed', 'NN')), (('airspeed', 'NN'), 'det', ('the', 'DT')), (('airspeed', 'NN'), 'nmod', ('swallow', 'VB')), (('swallow', 'VB'), 'case', ('of', 'IN')), (('swallow', 'VB'), 'det', ('an', 'DT')), (('swallow', 'VB'), 'amod', ('unladen', 'JJ')), (('What', 'WP'), 'punct', ('?', '.'))]]
+        dependencies = [[(governor, dep, dependent) for governor, dep, dependent in parse.triples()]
+                        for parse in parses][0]
 
         wordnet_lemmatizer = nltk.WordNetLemmatizer()
         part_of_speech_sentence = list(range(len(sentence)))
@@ -254,8 +281,6 @@ class ExternalDataLoader:
 
         backup_sentence = sentence.copy()
         interesting_translates = {'-LRB-': '(', '-RRB-': ')', '2\xa01/2': '2 1/2', "''": '"', ':-RRB-': ':)'}
-
-        print("aspect_indices ", aspect_indices)
 
         sentence_negations = []
 
@@ -284,11 +309,6 @@ class ExternalDataLoader:
                 index_of_word2 = backup_sentence.index(words[1])
                 range_list = [0]
 
-            # print("words ", words)
-            # print("part_of_speech ", part_of_speech)
-            # print("index_of_word1 ", index_of_word1)
-            # print("index_of_word2 ", index_of_word2)
-
             word_indices = [index_of_word1, index_of_word2]
 
             if dependency[1] == 'neg':
@@ -296,9 +316,11 @@ class ExternalDataLoader:
 
             for aspect_index in range(len(aspect_indices)):
 
-                if index_of_word1 in aspect_indices[aspect_index] and index_of_word2 not in aspect_indices[aspect_index]:
+                if index_of_word1 in aspect_indices[aspect_index] and index_of_word2 not in \
+                        aspect_indices[aspect_index]:
                     aspects_dependencies[aspect_index][index_of_word2] = dependency[1]
-                elif index_of_word1 not in aspect_indices[aspect_index] and index_of_word2 in aspect_indices[aspect_index]:
+                elif index_of_word1 not in aspect_indices[aspect_index] and index_of_word2 in \
+                        aspect_indices[aspect_index]:
                     aspects_dependencies[aspect_index][index_of_word1] = dependency[1]
                 elif index_of_word1 in aspect_indices[aspect_index] and index_of_word2 in aspect_indices[aspect_index]:
                     if aspects_dependencies[aspect_index][index_of_word1] == 'no':
@@ -308,33 +330,33 @@ class ExternalDataLoader:
 
             for i in range_list:
 
-                part_of_speech_sentence[word_indices[i]] = part_of_speech[i]
-
                 if part_of_speech[i].startswith('V'):        # Verb
+                    part_of_speech_sentence[word_indices[i]] = [1, 0, 0, 0, 0]
                     word = spell(words[i])
                     lemma = wordnet_lemmatizer.lemmatize(word, wordnet.VERB)
                     lemmatized_sentence[word_indices[i]] = lemma
                 elif part_of_speech[i].startswith('J'):      # Adjective
+                    part_of_speech_sentence[word_indices[i]] = [0, 1, 0, 0, 0]
                     word = spell(words[i])
                     lemma = wordnet_lemmatizer.lemmatize(word, wordnet.ADJ)
                     lemmatized_sentence[word_indices[i]] = lemma
                 elif part_of_speech[i].startswith('R'):      # Adverb
+                    part_of_speech_sentence[word_indices[i]] = [0, 0, 1, 0, 0]
                     word = spell(words[i])
                     lemma = wordnet_lemmatizer.lemmatize(word, wordnet.ADV)
                     lemmatized_sentence[word_indices[i]] = lemma
                 elif part_of_speech[i].startswith('N'):      # Noun
+                    part_of_speech_sentence[word_indices[i]] = [0, 0, 0, 1, 0]
                     word = spell(words[i])
                     lemma = wordnet_lemmatizer.lemmatize(word, wordnet.NOUN)
                     lemmatized_sentence[word_indices[i]] = lemma
                 else:                                       # Otherwise
+                    part_of_speech_sentence[word_indices[i]] = [0, 0, 0, 0, 1]
                     if words[i] not in punctuations:
                         words[i] = spell(words[i])
                     lemma = wordnet_lemmatizer.lemmatize(words[i])
                     lemmatized_sentence[word_indices[i]] = lemma
 
-        print("lemmatized_sentence ", lemmatized_sentence)
-        print("part_of_speech_sentence ", part_of_speech_sentence)
-        print("aspects_dependencies ", aspects_dependencies)
         return lemmatized_sentence, part_of_speech_sentence, aspects_dependencies, sentence_negations
 
     def annotate(self, text, properties=None):
@@ -348,9 +370,9 @@ class ExternalDataLoader:
         try:
             requests.get(self.server_url)
         except requests.exceptions.ConnectionError:
-            raise Exception('Check whether you have started the CoreNLP server e.g.\n'
-            '$ cd stanford-corenlp-full-2018-02-27/ \n'
-            '$ java -mx4g -cp "*" edu.stanford.nlp.pipeline.StanfordCoreNLPServer')
+            raise Exception('Check whether you have started the CoreNLP server e.g.\n' 
+                            '$ cd stanford-corenlp-full-2018-02-27/ \n'
+                            '$ java -mx4g -cp "*" edu.stanford.nlp.pipeline.StanfordCoreNLPServer')
         data = text.encode()
         r = requests.post(
             self.server_url, params={

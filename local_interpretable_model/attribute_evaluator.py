@@ -22,28 +22,28 @@ class LASSORegression:
 
             print("attributes[index_attribute] ", attributes[index_attribute])
             print("np.argmax(true_pred) ", np.argmax(true_pred))
-            if attributes[index_attribute][1] == np.argmax(true_pred):
+            # if attributes[index_attribute][1] == np.argmax(true_pred):
 
-                correct_attributes.append(index_attribute)
+            # correct_attributes.append(index_attribute)
 
-                previous_vector = np.ones(x.shape[0])
+            previous_vector = np.ones(x.shape[0])
 
-                for a_tuple in attributes[index_attribute][0]:
+            for a_tuple in attributes[index_attribute][0]:
 
-                    index = a_tuple[0]
-                    print("index ", index)
-                    x_index = x[:, index]
-                    print("x_index ", x_index)
+                index = a_tuple[0]
+                print("index ", index)
+                x_index = x[:, index]
+                print("x_index ", x_index)
 
-                    if a_tuple[1] == 0:
-                        x_index[x_index == 0] = 2
-                        x_index[x_index == 1] = 0
-                        x_index[x_index == 2] = 1
+                # if a_tuple[1] == 0:
+                #     x_index[x_index == 0] = 2
+                #     x_index[x_index == 1] = 0
+                #     x_index[x_index == 2] = 1
 
-                    x_training[:, index_attribute+1] = previous_vector * x_index
-                    previous_vector = x_index
+                x_training[:, index_attribute+1] = previous_vector * x_index
+                previous_vector = x_index
 
-        x_training = x_training[:, correct_attributes]
+        # x_training = x_training[:, correct_attributes]
         print("x_training ", x_training.shape)
         print("y ", y.shape)
         print("np.max(y) ", y[:, np.argmax(true_pred)])
@@ -59,7 +59,11 @@ class LASSORegression:
 
 class PredictionDifference:
 
-    def evaluate_attributes(self, attributes, word_embeddings, aspect_indices, neural_language_model):
+    def __init__(self, n_of_subsets):
+        self.n_of_subsets = n_of_subsets
+
+    def evaluate_attributes(self, attributes, word_attributes, word_embeddings, aspect_indices, y_pred,
+                            neural_language_model):
 
         # attributes are indices of relevant words
 
@@ -69,59 +73,58 @@ class PredictionDifference:
         #                                                   neural_language_model.config.max_sentence_length,
         #                                                   neural_language_model.config.max_target_length)
         #
-        # complete_pred = neural_language_model.predict(x_left_part, x_target_part, x_right_part, x_left_sen_len,
-        #                                               x_tar_len, x_right_sen_len)
+        # complete_pred, _ = neural_language_model.predict(x_left_part, x_target_part, x_right_part, x_left_sen_len,
+        #                                                  x_tar_len, x_right_sen_len)
+        # print("complete_pred ", complete_pred)
+        n_of_attributes = len(attributes)
+
+        begin_aspect_index = aspect_indices[0]
+        number_of_aspects = len(aspect_indices)
+
+        neighbour_embeddings = []
+        neighbour_aspects = []
+        all_words = []
+
+        for attr_index in range(n_of_attributes):
+
+            n_of_words_in_attribute = len(attributes[attr_index][0])
+
+            if n_of_words_in_attribute < self.n_of_subsets + 1:
+
+                sentence_representation = np.ones(len(word_embeddings), dtype=int)
+
+                words = []
+
+                for tuple_index in range(n_of_words_in_attribute):
+                    a_tuple = attributes[attr_index][0][tuple_index]
+                    sentence_representation[a_tuple[0]] = 0
+                    words.append(word_attributes[attr_index][0][tuple_index][0])
+                all_words.append(words)
+
+                n_of_ones_before_aspect = int(np.sum(sentence_representation[:begin_aspect_index]))
+                neighbour_aspect = np.arange(n_of_ones_before_aspect, n_of_ones_before_aspect + number_of_aspects)
+                neighbour_aspects.append(neighbour_aspect)
+
+                neighbour_embedding = np.array(word_embeddings)[sentence_representation == 1]
+                neighbour_embeddings.append(neighbour_embedding)
+
+        x_left_part, x_target_part, x_right_part, x_left_sen_len, x_tar_len, x_right_sen_len = \
+            neural_language_model.config.split_embeddings(np.array(neighbour_embeddings),
+                                                          np.array(neighbour_aspects),
+                                                          neural_language_model.config.max_sentence_length,
+                                                          neural_language_model.config.max_target_length)
+
+        pred_neighbour, _ = neural_language_model.predict(x_left_part, x_target_part, x_right_part,
+                                                           x_left_sen_len, x_tar_len, x_right_sen_len)
+
+        word_difference = y_pred - pred_neighbour
         word_relevance = []
+        n_of_classes = neural_language_model.config.number_of_classes
 
-        for attribute in attributes:
-
-            print("attribute ", attribute)
-
-            sentence_representation1 = np.ones(len(word_embeddings), dtype=int)
-            sentence_representation2 = np.ones(len(word_embeddings), dtype=int)
-
-            for a_tuple in attribute[0]:
-
-                if a_tuple[1] == 1:
-                    sentence_representation2[a_tuple[0]] = 0
-                elif a_tuple[1] == 0:
-                    sentence_representation1[a_tuple[0]] = 0
-
-            print("sentence_representation1 ", sentence_representation1)
-            print("sentence_representation2 ", sentence_representation2)
-
-            begin_aspect_index = aspect_indices[0]
-            number_of_aspects = len(aspect_indices)
-
-            n_of_ones_before_aspect1 = int(np.sum(sentence_representation1[:begin_aspect_index]))
-            neighbour_aspects1 = np.arange(n_of_ones_before_aspect1, n_of_ones_before_aspect1 + number_of_aspects)
-            neighbour_embeddings1 = np.array(word_embeddings)[sentence_representation1 == 1]
-
-            x_left_part1, x_target_part1, x_right_part1, x_left_sen_len1, x_tar_len1, x_right_sen_len1 = \
-                neural_language_model.config.split_embeddings(np.array([neighbour_embeddings1]),
-                                                              np.array([neighbour_aspects1]),
-                                                              neural_language_model.config.max_sentence_length,
-                                                              neural_language_model.config.max_target_length)
-
-            pred_neighbour1, _ = neural_language_model.predict(x_left_part1, x_target_part1, x_right_part1,
-                                                            x_left_sen_len1, x_tar_len1, x_right_sen_len1)
-            print("pred_neighbour1 ", pred_neighbour1)
-
-            n_of_ones_before_aspect2 = int(np.sum(sentence_representation2[:begin_aspect_index]))
-            neighbour_aspects2 = np.arange(n_of_ones_before_aspect2, n_of_ones_before_aspect2 + number_of_aspects)
-            neighbour_embeddings2 = np.array(word_embeddings)[sentence_representation2 == 1]
-
-            x_left_part2, x_target_part2, x_right_part2, x_left_sen_len2, x_tar_len2, x_right_sen_len2 = \
-                neural_language_model.config.split_embeddings(np.array([neighbour_embeddings2]),
-                                                              np.array([neighbour_aspects2]),
-                                                              neural_language_model.config.max_sentence_length,
-                                                              neural_language_model.config.max_target_length)
-
-            pred_neighbour2, _ = neural_language_model.predict(x_left_part2, x_target_part2, x_right_part2,
-                                                            x_left_sen_len2, x_tar_len2, x_right_sen_len2)
-            print("pred_neighbour2 ", pred_neighbour2)
-
-            word_relevance.append((pred_neighbour1[0] - pred_neighbour2[0]))
-            print(word_relevance)
+        for i in range(word_difference.shape[0]):
+            list_of_triples = []
+            for c in range(n_of_classes):
+                list_of_triples.append([all_words[i], c, word_difference[i][c]])
+            word_relevance.append(list_of_triples)
 
         return word_relevance

@@ -36,7 +36,8 @@ def main():
     lcr_rot_inverse = False
     lcr_rot_hop = False
 
-    # Do you want to run a hybrid model, the ontology reasoner always runs the hybrid form
+    # Do you want to run a hybrid model, the ontology reasoner always runs the hybrid form to set up the
+    # remaining data file. Therefore after running ontology reasoner once, you do not need to run it again
     Config.hybrid_method = False
 
     # Do you want to run cross-validation rounds, please specify the cross_validation_round settings in config.py
@@ -60,62 +61,81 @@ def main():
     local_interpretable_model = True
 
     if ontology:
-
+        # Running the ontology reasoner. Cannot use an explanation model for the ontology reasoner
         ontology_reasoner = OntologyReasoner(OntologyConfig, internal_data_loader)
         ontology_reasoner.run()
 
     if svm:
-
+        # Running the support vector machine (SVM). Cannot use an explanation model for SVM
         svm_model = SVM(SVMConfig, internal_data_loader)
         svm_model.run()
 
     if cabasc:
+        # Running the the CABASC model.
         cabasc_model = CABASCModel(CabascConfig, internal_data_loader)
         cabasc_model.run()
 
         if True in diagnostic_classifiers:
-            diagnostic_classifier = DiagnosticClassifier(cabasc_model)
-            diagnostic_classifier.run(diagnostic_classifiers)
+            diagnostic_classifier = DiagnosticClassifier(cabasc_model, diagnostic_classifiers)
+            diagnostic_classifier.run()
 
         if local_interpretable_model:
             local_interpretable_model = LocalInterpretableModel(LocalInterpretableConfig, cabasc_model)
+            local_interpretable_model.run()
 
     if lcr_rot:
+        # Running the the LCR Rot model.
         lcr_rot_model = LCRRot(LCR_RotConfig, internal_data_loader)
 
-        # if not os.path.isfile(lcr_rot_model.config.file_to_save_model):
-        # lcr_rot_model.run()
+        # Check whether LCR Rot is already trained. Otherwise train the model.
+        if not os.path.isfile(lcr_rot_model.config.file_to_save_model+".index"):
+            lcr_rot_model.run()
 
+        # Running Diagnostic Classifiers on the LCR Rot model.
         if True in diagnostic_classifiers.values():
-            diagnostic_classifier = DiagnosticClassifier(lcr_rot_model)
-            diagnostic_classifier.run(diagnostic_classifiers)
+            diagnostic_classifier = DiagnosticClassifier(lcr_rot_model, diagnostic_classifiers)
+            diagnostic_classifier.run()
 
+        # Running Local Interpretable model on the LCR Rot model.
         if local_interpretable_model:
             local_interpretable_model = LocalInterpretableModel(LocalInterpretableConfig, lcr_rot_model)
             local_interpretable_model.run()
 
     if lcr_rot_inverse:
-
+        # Run Diagnostic classifiers on the LCR Rot inverse model
         lcr_rot_inverse_model = LCRRotInverse(LCR_RotInverseConfig, internal_data_loader)
-        lcr_rot_inverse_model.run()
 
+        # Check whether LCR Rot inverse is already trained. Otherwise train the model.
+        if not os.path.isfile(lcr_rot_inverse_model.config.file_to_save_model+".index"):
+            lcr_rot_inverse_model.run()
+
+        # Running Diagnostic Classifiers on the LCR Rot inverse model.
         if True in diagnostic_classifiers:
-            diagnostic_classifier = DiagnosticClassifier(lcr_rot_inverse_model)
-            diagnostic_classifier.run(diagnostic_classifiers)
+            diagnostic_classifier = DiagnosticClassifier(lcr_rot_inverse_model, diagnostic_classifiers)
+            diagnostic_classifier.run()
 
+        # Running Local Interpretable model on the LCR Rot inverse model.
         if local_interpretable_model:
             local_interpretable_model = LocalInterpretableModel(LocalInterpretableConfig, lcr_rot_inverse_model)
+            local_interpretable_model.run()
 
     if lcr_rot_hop:
+        # Run Diagnostic classifiers on the LCR Rot hop model
         lcr_rot_hop_model = LCRRotHopModel(LCR_RotHopConfig, internal_data_loader)
-        lcr_rot_hop_model.run()
 
+        # Check whether LCR Rot hop is already trained. Otherwise train the model.
+        if not os.path.isfile(lcr_rot_hop_model.config.file_to_save_model+".index"):
+            lcr_rot_hop_model.run()
+
+        # Running Diagnostic Classifiers on the LCR Rot hop model.
         if True in diagnostic_classifiers:
-            diagnostic_classifier = DiagnosticClassifier(lcr_rot_hop_model)
-            diagnostic_classifier.run(diagnostic_classifiers)
+            diagnostic_classifier = DiagnosticClassifier(lcr_rot_hop_model, diagnostic_classifiers)
+            diagnostic_classifier.run()
 
+        # Running Local Interpretable model on the LCR Rot hop model.
         if local_interpretable_model:
             local_interpretable_model = LocalInterpretableModel(LocalInterpretableConfig, lcr_rot_hop_model)
+            local_interpretable_model.run()
 
 
 if __name__ == '__main__':

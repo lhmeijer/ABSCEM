@@ -9,7 +9,7 @@ class OntologyReasoner:
         self.internal_data_loader = internal_data_loader
 
     @staticmethod
-    def predict_sentiment_of_sentences(sentence_polarities, aspects_dependencies, sentence_negations, polarity_matrix):
+    def predict_sentiment_of_sentences(sentence_polarities, aspects_relations, sentence_negations, polarity_matrix):
 
         number_of_sentences = sentence_polarities.shape[0]
 
@@ -33,22 +33,23 @@ class OntologyReasoner:
 
                 if len(negation_indices) == 2:
 
-                    aspect_relation_1 = aspects_dependencies[index_sentence][negation_indices[0]]
-                    aspect_relation_2 = aspects_dependencies[index_sentence][negation_indices[1]]
+                    aspect_relation_1 = aspects_relations[negation_indices[0]]
+                    aspect_relation_2 = aspects_relations[negation_indices[1]]
 
-                    if aspect_relation_1 != 'no' or aspect_relation_2 != 'no':
+                    # check whether the negation words have a relationship with the aspect
+                    if aspect_relation_1 == [1, 0] or aspect_relation_2 == [1, 0]:
                         negation = True
 
             for index_word in range(number_of_words_in_sentence):
 
-                if sentence_polarities[index_sentence][index_word] == "Positive":
+                if sentence_polarities[index_sentence][index_word] == [0, 0, 1]:
 
                     if negation:
                         negative_polarities.append(True)
                     else:
                         positive_polarities.append(True)
 
-                elif sentence_polarities[index_sentence][index_word] == "Negative":
+                elif sentence_polarities[index_sentence][index_word] == [0, 1, 0]:
 
                     if negation:
                         positive_polarities.append(True)
@@ -83,12 +84,12 @@ class OntologyReasoner:
     def run(self):
 
         x_train = np.array(self.internal_data_loader.word_polarities_training)
-        train_aspects_dependencies = np.array(self.internal_data_loader.aspect_dependencies_training)
+        train_aspects_relations = np.array(self.internal_data_loader.word_relations_training)
         train_negations = np.array(self.internal_data_loader.negation_in_training)
         y_train = np.array(self.internal_data_loader.polarity_matrix_training)
 
         x_test = np.array(self.internal_data_loader.word_polarities_test)
-        test_aspects_dependencies = np.array(self.internal_data_loader.aspect_dependencies_test)
+        test_aspects_relations = np.array(self.internal_data_loader.word_relations_test)
         test_negations = np.array(self.internal_data_loader.negation_in_test)
         y_test = np.array(self.internal_data_loader.polarity_matrix_test)
 
@@ -108,17 +109,17 @@ class OntologyReasoner:
 
                 x_train_cross = x_train[training_indices[i]]
                 y_train_cross = y_train[training_indices[i]]
-                train_aspects_dependencies_cross = train_aspects_dependencies[training_indices[i]]
+                train_aspects_dependencies_cross = train_aspects_relations[training_indices[i]]
                 train_negations_cross = train_negations[training_indices[i]]
                 x_validation_cross = x_train[validation_indices[i]]
                 y_validation_cross = y_train[validation_indices[i]]
-                validation_aspects_dependencies_cross = train_aspects_dependencies[validation_indices[i]]
+                validation_aspects_dependencies_cross = train_aspects_relations[validation_indices[i]]
                 validation_negations_cross = train_negations[validation_indices[i]]
 
                 majority_count_training, with_backup_count_training, count_training, _ = \
                     self.predict_sentiment_of_sentences(
                         sentence_polarities=x_train_cross,
-                        aspects_dependencies=train_aspects_dependencies_cross,
+                        aspects_relations=train_aspects_dependencies_cross,
                         sentence_negations=train_negations_cross,
                         polarity_matrix=y_train_cross
                     )
@@ -129,7 +130,7 @@ class OntologyReasoner:
                 majority_count_validation, with_backup_count_validation, count_validation, remaining_validation_indices = \
                     self.predict_sentiment_of_sentences(
                         sentence_polarities=x_validation_cross,
-                        aspects_dependencies=validation_aspects_dependencies_cross,
+                        aspects_relations=validation_aspects_dependencies_cross,
                         sentence_negations=validation_negations_cross,
                         polarity_matrix=y_validation_cross
                     )
@@ -139,10 +140,10 @@ class OntologyReasoner:
                 accuracy_majority_validation = majority_count_validation / count_validation
                 accuracy_with_back_validation = with_backup_count_validation / count_validation
 
-                train_single_acc_majority[i] = np.sum(majority_count_training) / np.sum(count_training),
-                train_single_acc_with_backup[i] = np.sum(with_backup_count_training) / np.sum(count_training),
-                validation_single_acc_majority[i] = np.sum(majority_count_validation) / np.sum(count_validation),
-                validation_single_acc_with_backup[i] = np.sum(with_backup_count_validation) / np.sum(count_validation),
+                train_single_acc_majority[i] = np.sum(majority_count_training) / np.sum(count_training)
+                train_single_acc_with_backup[i] = np.sum(with_backup_count_training) / np.sum(count_training)
+                validation_single_acc_majority[i] = np.sum(majority_count_validation) / np.sum(count_validation)
+                validation_single_acc_with_backup[i] = np.sum(with_backup_count_validation) / np.sum(count_validation)
 
                 result = {
                     'classification model': self.config.name_of_model,
@@ -188,7 +189,7 @@ class OntologyReasoner:
             majority_count_training, with_backup_count_training, count_training, _ = \
                 self.predict_sentiment_of_sentences(
                         sentence_polarities=x_train,
-                        aspects_dependencies=train_aspects_dependencies,
+                        aspects_relations=train_aspects_relations,
                         sentence_negations=train_negations,
                         polarity_matrix=y_train
                     )
@@ -199,7 +200,7 @@ class OntologyReasoner:
             majority_count_test, with_backup_count_test, count_test, remaining_test_indices = \
                 self.predict_sentiment_of_sentences(
                     sentence_polarities=x_test,
-                    aspects_dependencies=test_aspects_dependencies,
+                    aspects_relations=train_aspects_relations,
                     sentence_negations=test_negations,
                     polarity_matrix=y_test
                 )

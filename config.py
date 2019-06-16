@@ -8,7 +8,7 @@ from local_interpretable_model.rule_based_classifier import RuleBasedClassifier
 
 class Config:
 
-    year = 2015
+    year = 2016
     embedding_dimension = 300
     hybrid_method = False
     cross_validation_rounds = 10
@@ -119,8 +119,8 @@ class LCR_RotConfig(NeuralLanguageModelConfig):
     name_of_model = "LCR_Rot_model"
     batch_size = 20
     number_hidden_units = 300
-    l2_regularization = 0.001
-    number_of_iterations = 10
+    l2_regularization = 0.00001
+    number_of_iterations = 50
     max_sentence_length = 80
     max_target_length = 19
     number_of_classes = 3
@@ -184,10 +184,11 @@ class LCR_RotHopConfig(LCR_RotConfig):
     file_of_cross_val_results = "results/abs_classifiers/" + str(Config.year) + "/cross_val_" + name_of_model + "json"
     file_to_save_model = "data/model_savings/LCR_Rot_hop_model_" + str(Config.year) + "_tf.model"
 
+
 class DiagnosticClassifierPOSConfig(Config):
 
-    neural_language_model = NeuralLanguageModelConfig
-    name_of_model = "diagnostic classifier for ontology mentions"
+    name_of_nlm = ""
+    name_of_model = "diagnostic classifier for part of speech tagging"
     classifier = SingleMLPClassifier(
         learning_rate=0.001,
         number_hidden_units=300,
@@ -195,17 +196,19 @@ class DiagnosticClassifierPOSConfig(Config):
         keep_prob=0.8,
         batch_size=20,
         random_base=0.1,
+        number_of_classes=5,
         model_name=name_of_model
     )
 
-    file_of_results = "results/diagnostic_classifiers/" + str(Config.year) + "/" + \
-                                             neural_language_model.name_of_model + \
-                                             "_part_of_speech_tagging.json"
+    @staticmethod
+    def get_file_of_results(name_of_nlm):
+        return "results/diagnostic_classifiers/" + str(Config.year) + "/" + name_of_nlm + \
+               "_part_of_speech_tagging.json"
+
 
 class DiagnosticClassifierPolarityConfig(Config):
 
-    name_of_model = "diagnostic classifier for ontology mentions"
-    neural_language_model = NeuralLanguageModelConfig
+    name_of_model = "diagnostic classifier for polarities towards the aspects"
     classifier = SingleMLPClassifier(
         learning_rate=0.001,
         number_hidden_units=500,
@@ -213,17 +216,20 @@ class DiagnosticClassifierPolarityConfig(Config):
         keep_prob=0.8,
         batch_size=20,
         random_base=0.1,
+        number_of_classes = 3,
         model_name=name_of_model
     )
 
-    file_of_results = "results/diagnostic_classifiers/" + str(Config.year) + "/" + neural_language_model.name_of_model \
-                      + "_polarity_towards_aspect.json"
+    @staticmethod
+    def get_file_of_results(name_of_nlm):
+        return "results/diagnostic_classifiers/" + str(Config.year) + "/" + name_of_nlm + \
+               "_polarity_towards_aspect.json"
 
 
 class DiagnosticClassifierRelationConfig(Config):
 
-    name_of_model = "diagnostic classifier for ontology mentions"
-    neural_language_model = NeuralLanguageModelConfig
+    name_of_model = "diagnostic classifier for relations towards the aspects"
+    name_of_nlm = ""
     classifier = SingleMLPClassifier(
         learning_rate=0.001,
         number_hidden_units=300,
@@ -231,18 +237,19 @@ class DiagnosticClassifierRelationConfig(Config):
         keep_prob=0.8,
         batch_size=20,
         random_base=0.1,
+        number_of_classes = 2,
         model_name=name_of_model
     )
 
-    file_of_results = "results/diagnostic_classifiers/" + str(Config.year) + "/" + \
-                                              neural_language_model.name_of_model + \
-                                              "_relation_towards_aspect.json"
-
+    @staticmethod
+    def get_file_of_results(name_of_nlm):
+        return "results/diagnostic_classifiers/" + str(Config.year) + "/" + name_of_nlm + \
+               "_relation_towards_aspect.json"
 
 class DiagnosticClassifierMentionConfig(Config):
 
     name_of_model = "diagnostic classifier for ontology mentions"
-    neural_language_model = NeuralLanguageModelConfig
+    name_of_nlm = ""
     classifier = SingleMLPClassifier(
         learning_rate=0.001,
         number_hidden_units=300,
@@ -250,12 +257,14 @@ class DiagnosticClassifierMentionConfig(Config):
         keep_prob=0.8,
         batch_size=20,
         random_base=0.1,
+        number_of_classes = 14,
         model_name=name_of_model
     )
 
-    file_of_results = "results/diagnostic_classifiers/" + str(Config.year) + "/" + \
-                                       neural_language_model.name_of_model + \
-                                       "_ontology_mention.json"
+    @staticmethod
+    def get_file_of_results(name_of_nlm):
+        return "results/diagnostic_classifiers/" + str(Config.year) + "/" + name_of_nlm + \
+                "_ontology_mention.json"
 
 
 class LocalInterpretableConfig(Config):
@@ -264,11 +273,12 @@ class LocalInterpretableConfig(Config):
 
     # algorithm to calculate the neighbours of a instance
     locality_model_name = "perturbing"
-    locality_model = Perturbing(10)
+    locality_model = Perturbing(500)
 
-    # rule based classifier
+    # rule based classifier, 3 is the number of subsets + 1
+
     rule_based_classifier_name = "C4.5"
-    rule_based_classifier = RuleBasedClassifier(0.90, 5)
+    rule_based_classifier = RuleBasedClassifier(0.50, 4)
 
     # classifier to compute word relevance, lasso regression or prediction difference
     # alpha = 0.05
@@ -276,7 +286,7 @@ class LocalInterpretableConfig(Config):
     # attribute_evaluator = LASSORegression(alpha)
 
     attribute_evaluator_name = "prediction difference"
-    attribute_evaluator = PredictionDifference()
+    attribute_evaluator = PredictionDifference(3)
 
     file_of_results = "results/local_interpretable_models/" + str(Config.year) + "/" + locality_model_name + "_" + \
                       rule_based_classifier_name + ".json"
