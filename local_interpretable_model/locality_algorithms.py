@@ -11,6 +11,10 @@ class Perturbing:
 
         sentence_length = len(x)
 
+        n_of_possibilities = np.power(2, sentence_length - 1)
+        if n_of_possibilities < self.k:
+            self.k = n_of_possibilities
+
         x_neighbours = []
 
         begin_aspect_index = aspects[0]

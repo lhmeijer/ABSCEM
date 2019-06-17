@@ -1,7 +1,7 @@
 from abs_classifiers.neural_language_model import NeuralLanguageModel
 import tensorflow as tf
-from neural_network_layers.attention_layers import attention_function
-from neural_network_layers.nn_layers import bi_dynamic_rnn, softmax_layer, reduce_mean_with_len
+from model_layers.attention_layers import attention_function
+from model_layers.nn_layers import bi_dynamic_rnn, softmax_layer, reduce_mean_with_len
 
 
 class LCRRot(NeuralLanguageModel):
@@ -22,11 +22,13 @@ class LCRRot(NeuralLanguageModel):
 
         # left hidden states
         input_left = tf.nn.dropout(left_sentence_parts, rate=rate)
-        left_hidden_state = bi_dynamic_rnn(cell, input_left, self.config.number_hidden_units, left_sentence_lengths, 'l' + _id)
+        left_hidden_state = bi_dynamic_rnn(cell, input_left, self.config.number_hidden_units, left_sentence_lengths,
+                                           'l' + _id)
 
         # right hidden states
         input_right = tf.nn.dropout(right_sentence_parts, rate=rate)
-        right_hidden_state = bi_dynamic_rnn(cell, input_right, self.config.number_hidden_units, right_sentence_lengths, 'r' + _id)
+        right_hidden_state = bi_dynamic_rnn(cell, input_right, self.config.number_hidden_units, right_sentence_lengths,
+                                            'r' + _id)
 
         # target hidden states
         target = tf.nn.dropout(target_parts, rate=rate)
@@ -36,48 +38,40 @@ class LCRRot(NeuralLanguageModel):
         pool_t = reduce_mean_with_len(target_hidden_state, target_lengths)
 
         # attention left
-        att_l = attention_function(left_hidden_state, pool_t, left_sentence_lengths, 2 * self.config.number_hidden_units,
+        att_l = attention_function(left_hidden_state, pool_t, left_sentence_lengths,
+                                   2 * self.config.number_hidden_units, self.config.max_sentence_length,
                                    self.config.l2_regularization, self.config.random_base, 'att_l' + _id)
-        print("att_l ", att_l)
-        print("right_hidden_state ", right_hidden_state)
-        print("tf.matmul(att_l, left_hidden_state) ", tf.matmul(att_l, left_hidden_state))
-        print("element-wise ", tf.math.multiply(att_l, left_hidden_state))
         weighted_left_hidden_state = tf.math.multiply(tf.transpose(att_l, perm=[0, 2, 1]), left_hidden_state)
-        print("weighted_left_hidden_state ", weighted_left_hidden_state)
 
         left_context_representation = tf.squeeze(tf.matmul(att_l, left_hidden_state), [1])
 
         # attention right
-        att_r = attention_function(right_hidden_state, pool_t, right_sentence_lengths, 2 * self.config.number_hidden_units,
+        att_r = attention_function(right_hidden_state, pool_t, right_sentence_lengths,
+                                   2 * self.config.number_hidden_units, self.config.max_sentence_length,
                                    self.config.l2_regularization, self.config.random_base, 'att_r' + _id)
-
-        print("tf.matmul(att_r, right_hidden_state) ", tf.matmul(att_r, right_hidden_state))
         weighted_right_hidden_state = tf.math.multiply(tf.transpose(att_r, perm=[0, 2, 1]), right_hidden_state)
         right_context_representation = tf.squeeze(tf.matmul(att_r, right_hidden_state), [1])
 
-        # attention target
+        # attention target left
         att_t_l = attention_function(target_hidden_state, left_context_representation, target_lengths,
-                                     2 * self.config.number_hidden_units, self.config.l2_regularization,
-                                     self.config.random_base, 'att_t_l' + _id)
-        print("att_t_l ", att_t_l)
-        print("target_hidden_state ", target_hidden_state)
+                                     2 * self.config.number_hidden_units, self.config.max_target_length,
+                                     self.config.l2_regularization, self.config.random_base, 'att_t_l' + _id)
         weighted_target_left_hidden_state = tf.math.multiply(tf.transpose(att_t_l, perm=[0, 2, 1]), target_hidden_state)
-
         target_left_context_representation = tf.squeeze(tf.matmul(att_t_l, target_hidden_state), [1])
 
+        # attention target right
         att_t_r = attention_function(target_hidden_state, right_context_representation, target_lengths,
-                                     2 * self.config.number_hidden_units, self.config.l2_regularization,
-                                     self.config.random_base, 'att_t_r' + _id)
-
+                                     2 * self.config.number_hidden_units, self.config.max_target_length,
+                                     self.config.l2_regularization, self.config.random_base, 'att_t_r' + _id)
         weighted_target_right_hidden_state = tf.math.multiply(tf.transpose(att_t_r, perm=[0, 2, 1]),
                                                               target_hidden_state)
-
         target_right_context_representation = tf.squeeze(tf.matmul(att_t_r, target_hidden_state), [1])
-        print('target_right_context_representation ', target_right_context_representation)
 
+        # full sentence representation
         sentence_representation = tf.concat([left_context_representation, target_left_context_representation,
                                              target_right_context_representation, right_context_representation], 1)
 
+        # classification probability per class
         prob = softmax_layer(sentence_representation, 8 * self.config.number_hidden_units, self.config.random_base,
                              keep_prob2, self.config.l2_regularization, self.config.number_of_classes)
 
@@ -88,7 +82,11 @@ class LCRRot(NeuralLanguageModel):
             'weighted_left_hidden_state': weighted_left_hidden_state,
             'weighted_right_hidden_state': weighted_right_hidden_state,
             'weighted_target_left_hidden_state': weighted_target_left_hidden_state,
-            'weighted_target_right_hidden_state': weighted_target_right_hidden_state
+            'weighted_target_right_hidden_state': weighted_target_right_hidden_state,
+            'left_attention_score': att_l,
+            'right_attention_score': att_r,
+            'target_left_attention_score': att_t_l,
+            'target_right_attention_score': att_t_r
         }
 
         return prob, layer_information

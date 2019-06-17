@@ -3,8 +3,7 @@ import numpy as np
 
 class RuleBasedClassifier:
 
-    def __init__(self, gamma, tree_depth):
-        self.gamma = gamma
+    def __init__(self, tree_depth):
         self.tree_depth = tree_depth
         self.rules_indices = []
         self.rules_lemmas = []

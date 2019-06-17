@@ -9,6 +9,7 @@ class InternalDataLoader:
         self.config = config
         self.word_list = []
 
+        self.sentence_id_in_training = []
         self.total_word_in_training = []
         self.lemmatized_training = []
         self.word_embeddings_training_all = []
@@ -23,6 +24,7 @@ class InternalDataLoader:
         self.polarity_matrix_training = []
         self.categories_matrix_training = []
 
+        self.sentence_id_in_test = []
         self.total_word_in_test = []
         self.lemmatized_test = []
         self.word_embeddings_test_all = []
@@ -59,6 +61,7 @@ class InternalDataLoader:
                         for lemma in lemmatized_sentence:
                             self.word_list.append(lemma)
 
+                        self.sentence_id_in_training.append(sentence['sentence_id'])
                         self.word_embeddings_training_all.append(sentence['word_embeddings'])
                         self.sentiment_distribution_training.append(sentence['sentiment_distribution'])
                         self.negation_in_training.append(sentence['negation_in_sentence'])
@@ -94,6 +97,7 @@ class InternalDataLoader:
                         for lemma in lemmatized_sentence:
                             self.word_list.append(lemma)
 
+                        self.sentence_id_in_test.append(sentence['sentence_id'])
                         self.word_embeddings_test_all.append(sentence['word_embeddings'])
                         self.sentiment_distribution_test.append(sentence['sentiment_distribution'])
                         self.negation_in_test.append(sentence['negation_in_sentence'])

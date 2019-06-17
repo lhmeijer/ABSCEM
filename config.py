@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 from diagnostic_classifier.classifiers import SingleMLPClassifier
-from local_interpretable_model.attribute_evaluator import LASSORegression, PredictionDifference
+from local_interpretable_model.attribute_evaluator import MyLinearRegression, PredictionDifference
 from local_interpretable_model.locality_algorithms import Perturbing
 from local_interpretable_model.rule_based_classifier import RuleBasedClassifier
 
@@ -142,9 +142,9 @@ class LCR_RotConfig(NeuralLanguageModelConfig):
 
         number_of_sentences = np.shape(word_embeddings)
 
-        left_part = np.zeros((number_of_sentences[0], max_sentence_length, 300), dtype=float)
-        right_part = np.zeros((number_of_sentences[0], max_sentence_length, 300), dtype=float)
-        target_part = np.zeros((number_of_sentences[0], max_target_length, 300), dtype=float)
+        left_part = np.zeros((number_of_sentences[0], max_sentence_length, Config.embedding_dimension), dtype=float)
+        right_part = np.zeros((number_of_sentences[0], max_sentence_length, Config.embedding_dimension), dtype=float)
+        target_part = np.zeros((number_of_sentences[0], max_target_length, Config.embedding_dimension), dtype=float)
 
         words_in_left_context = np.zeros(number_of_sentences[0], dtype=int)
         words_in_target = np.zeros(number_of_sentences[0], dtype=int)
@@ -172,17 +172,25 @@ class LCR_RotConfig(NeuralLanguageModelConfig):
 class LCR_RotInverseConfig(LCR_RotConfig):
 
     name_of_model = "LCR_Rot_inverse_model"
+
     file_of_results = "results/abs_classifiers/" + str(Config.year) + "/" + name_of_model + ".json"
     file_of_cross_val_results = "results/abs_classifiers/" + str(Config.year) + "/cross_val_" + name_of_model + "json"
-    file_to_save_model = "data/model_savings/LCR_Rot_inverse_model_" + str(Config.year) + "_tf.model"
+    file_to_save_model = "data/model_savings/LCR_Rot_inverse_model_" + str(Config.year) + "/tf.model"
+    tr_file_of_hidden_layers = "data/hidden_layers/" + str(Config.year) + "/training_" + name_of_model + ".json"
+    te_file_of_hidden_layers = "data/hidden_layers/" + str(Config.year) + "/test_" + name_of_model + ".json"
 
 
 class LCR_RotHopConfig(LCR_RotConfig):
 
     name_of_model = "LCR_Rot_hop_model"
+
+    n_iterations_hop = 3
+
     file_of_results = "results/abs_classifiers/" + str(Config.year) + "/" + name_of_model + ".json"
     file_of_cross_val_results = "results/abs_classifiers/" + str(Config.year) + "/cross_val_" + name_of_model + "json"
-    file_to_save_model = "data/model_savings/LCR_Rot_hop_model_" + str(Config.year) + "_tf.model"
+    file_to_save_model = "data/model_savings/LCR_Rot_hop_model_" + str(Config.year) + "/tf.model"
+    tr_file_of_hidden_layers = "data/hidden_layers/" + str(Config.year) + "/training_" + name_of_model + ".json"
+    te_file_of_hidden_layers = "data/hidden_layers/" + str(Config.year) + "/test_" + name_of_model + ".json"
 
 
 class DiagnosticClassifierPOSConfig(Config):
@@ -270,23 +278,23 @@ class DiagnosticClassifierMentionConfig(Config):
 class LocalInterpretableConfig(Config):
 
     name_of_model = "Local Interpretable model"
+    name_of_nlm = ""
 
-    # algorithm to calculate the neighbours of a instance
+    # algorithm to calculate the neighbours of an instance
     locality_model_name = "perturbing"
-    locality_model = Perturbing(500)
+    locality_model = Perturbing(512)
 
-    # rule based classifier, 3 is the number of subsets + 1
+    # rule based classifier, 3 is the number of subsets
+    max_tree_depth = 4
+    rule_based_classifier_name = "decision_tree"
+    rule_based_classifier = RuleBasedClassifier(max_tree_depth)
 
-    rule_based_classifier_name = "C4.5"
-    rule_based_classifier = RuleBasedClassifier(0.50, 4)
+    # classifier to compute word relevance, linear regression or prediction difference
+    attribute_evaluator_name = "linear regression and prediction difference"
+    n_of_subset = 3
 
-    # classifier to compute word relevance, lasso regression or prediction difference
-    # alpha = 0.05
-    # attribute_evaluator_name = "lasso_regression_with_alpha_" + str(alpha)
-    # attribute_evaluator = LASSORegression(alpha)
-
-    attribute_evaluator_name = "prediction difference"
-    attribute_evaluator = PredictionDifference(3)
-
-    file_of_results = "results/local_interpretable_models/" + str(Config.year) + "/" + locality_model_name + "_" + \
-                      rule_based_classifier_name + ".json"
+    @staticmethod
+    def get_file_of_results(name_of_nlm, locality_model_name=locality_model_name,
+                            rule_based_classifier_name=rule_based_classifier_name):
+        return "results/local_interpretable_models/" + str(Config.year) + "/" + name_of_nlm + "_" + \
+                      locality_model_name + "_" + rule_based_classifier_name + ".json"

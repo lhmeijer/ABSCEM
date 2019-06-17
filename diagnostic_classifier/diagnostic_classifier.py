@@ -59,8 +59,17 @@ class DiagnosticClassifier:
         right_word_embeddings = []
         left_hidden_states = []
         right_hidden_states = []
-        weighted_left_hidden_state = []
-        weighted_right_hidden_state = []
+
+        weighted_hidden_state = {}
+
+        if self.neural_language_model.config.name_of_model == "LCR_Rot_hop_model":
+
+            for i in range(self.neural_language_model.config.n_iterations_hop):
+                weighted_hidden_state['weighted_left_hidden_state' + str(i)] = []
+                weighted_hidden_state['weighted_right_hidden_state' + str(i)] = []
+        else:
+            weighted_hidden_state['weighted_left_hidden_state'] = []
+            weighted_hidden_state['weighted_right_hidden_state'] = []
 
         mentions_per_word_left = []
         mentions_count_left = np.zeros(len(mentions[0][0]), dtype=int)
@@ -99,7 +108,15 @@ class DiagnosticClassifier:
                 for j in range(n_left_words):
                     left_word_embeddings.append(x_left_part[index][j].tolist())
                     left_hidden_states.append(tr_layer_information['left_hidden_state'][0][j].tolist())
-                    weighted_left_hidden_state.append(tr_layer_information['weighted_left_hidden_state'][0][j].tolist())
+
+                    if self.neural_language_model.config.name_of_model == "LCR_Rot_hop_model":
+
+                        for i in range(self.neural_language_model.config.n_iterations_hop):
+                            weighted_hidden_state['weighted_left_hidden_state' + str(i)].append(
+                                tr_layer_information['weighted_left_hidden_state' + str(i)][0][j].tolist())
+                    else:
+                        weighted_hidden_state['weighted_left_hidden_state'].append(
+                            tr_layer_information['weighted_left_hidden_state'][0][j].tolist())
 
                     mentions_per_word_left.append(mentions[index][j])
                     index_of_one = mentions[index][j].index(1)
@@ -124,8 +141,15 @@ class DiagnosticClassifier:
                 for j in range(n_right_words):
                     right_word_embeddings.append(x_right_part[index][j].tolist())
                     right_hidden_states.append(tr_layer_information['right_hidden_state'][0][j].tolist())
-                    weighted_right_hidden_state.append(
-                        tr_layer_information['weighted_right_hidden_state'][0][j].tolist())
+
+                    if self.neural_language_model.config.name_of_model == "LCR_Rot_hop_model":
+
+                        for i in range(self.neural_language_model.config.n_iterations_hop):
+                            weighted_hidden_state['weighted_right_hidden_state' + str(i)].append(
+                                tr_layer_information['weighted_right_hidden_state' + str(i)][0][j].tolist())
+                    else:
+                        weighted_hidden_state['weighted_right_hidden_state'].append(
+                            tr_layer_information['weighted_right_hidden_state'][0][j].tolist())
 
                     mentions_per_word_right.append(mentions[index][end_index + 1 + j])
                     index_of_one = mentions[index][end_index + 1 + j].index(1)
@@ -148,8 +172,7 @@ class DiagnosticClassifier:
             'right_word_embeddings': right_word_embeddings,
             'left_hidden_states': left_hidden_states,
             'right_hidden_states': right_hidden_states,
-            'weighted_left_hidden_state': weighted_left_hidden_state,
-            'weighted_right_hidden_state': weighted_right_hidden_state,
+            'weighted_hidden_state': weighted_hidden_state,
             'mentions_per_word_left': mentions_per_word_left,
             'mentions_count_left': mentions_count_left.tolist(),
             'mentions_per_word_right': mentions_per_word_right,
@@ -257,15 +280,71 @@ class DiagnosticClassifier:
             np.array(te_feature_values['right_hidden_states']), np.array(te_feature_values[interest+'_per_word_right']),
             self.neural_language_model)
 
-        acc_weighted_left_hidden_state = diagnostic_config.classifier.fit(
-            np.array(tr_feature_values['weighted_left_hidden_state'])[left_random_indices],
-            tr_left_y[left_random_indices], np.array(te_feature_values['weighted_left_hidden_state']),
-            np.array(te_feature_values[interest+'_per_word_left']), self.neural_language_model)
+        acc_weighted_hidden_state = {}
+        tr_dict_weighted_hidden_states = tr_feature_values['weighted_hidden_state']
+        te_dict_weighted_hidden_states = te_feature_values['weighted_hidden_state']
 
-        acc_weighted_right_hidden_state = diagnostic_config.classifier.fit(
-            np.array(tr_feature_values['weighted_right_hidden_state'])[right_random_indices],
-            tr_right_y[right_random_indices], np.array(te_feature_values['weighted_right_hidden_state']),
-            np.array(te_feature_values[interest+'_per_word_right']), self.neural_language_model)
+        if self.neural_language_model.config.name_of_model == "LCR_Rot_hop_model":
+
+            for i in range(self.neural_language_model.config.n_iterations_hop):
+                acc_weighted_left_hidden_state = diagnostic_config.classifier.fit(
+                    np.array(tr_dict_weighted_hidden_states['weighted_left_hidden_state' + str(i)])
+                    [left_random_indices], tr_left_y[left_random_indices],
+                    np.array(te_dict_weighted_hidden_states['weighted_left_hidden_state' + str(i)]),
+                    np.array(te_feature_values[interest + '_per_word_left']), self.neural_language_model)
+
+                acc_weighted_right_hidden_state = diagnostic_config.classifier.fit(
+                    np.array(tr_dict_weighted_hidden_states['weighted_right_hidden_state' + str(i)])
+                    [right_random_indices], tr_right_y[right_random_indices],
+                    np.array(te_dict_weighted_hidden_states['weighted_right_hidden_state' + str(i)]),
+                    np.array(te_feature_values[interest + '_per_word_right']), self.neural_language_model)
+
+                acc_weighted_hidden_state['in_sample_acc_weighted_left_hidden_state' + str(i)] = \
+                    acc_weighted_left_hidden_state[0]
+                acc_weighted_hidden_state['out_of_sample_acc_weighted_left_hidden_state' + str(i)] = \
+                    acc_weighted_left_hidden_state[1]
+                acc_weighted_hidden_state['in_sample_left_n_per_class_weighted' + str(i)] = \
+                    acc_weighted_left_hidden_state[2].tolist()
+                acc_weighted_hidden_state['out_of_sample_left_n_per_class_weighted' + str(i)] = \
+                    acc_weighted_left_hidden_state[3].tolist()
+
+                acc_weighted_hidden_state['in_sample_acc_weighted_right_hidden_state' + str(i)] = \
+                    acc_weighted_right_hidden_state[0]
+                acc_weighted_hidden_state['out_of_sample_acc_weighted_right_hidden_state' + str(i)] = \
+                    acc_weighted_right_hidden_state[1]
+                acc_weighted_hidden_state['in_sample_right_n_per_class_weighted' + str(i)] = \
+                    acc_weighted_right_hidden_state[2].tolist()
+                acc_weighted_hidden_state['out_of_sample_right_n_per_class_weighted' + str(i)] = \
+                    acc_weighted_right_hidden_state[3].tolist()
+        else:
+            acc_weighted_left_hidden_state = diagnostic_config.classifier.fit(
+                np.array(tr_dict_weighted_hidden_states['weighted_left_hidden_state'])[left_random_indices],
+                tr_left_y[left_random_indices],
+                np.array(te_dict_weighted_hidden_states['weighted_left_hidden_state']),
+                np.array(te_feature_values[interest + '_per_word_left']), self.neural_language_model)
+
+            acc_weighted_right_hidden_state = diagnostic_config.classifier.fit(
+                np.array(tr_dict_weighted_hidden_states['weighted_right_hidden_state'])[right_random_indices],
+                tr_right_y[right_random_indices],
+                np.array(te_dict_weighted_hidden_states['weighted_right_hidden_state']),
+                np.array(te_feature_values[interest + '_per_word_right']), self.neural_language_model)
+
+            acc_weighted_hidden_state['in_sample_acc_weighted_left_hidden_state'] = acc_weighted_left_hidden_state[0]
+            acc_weighted_hidden_state['out_of_sample_acc_weighted_left_hidden_state'] = \
+                acc_weighted_left_hidden_state[1]
+            acc_weighted_hidden_state['in_sample_left_n_per_class_weighted'] = \
+                acc_weighted_left_hidden_state[2].tolist()
+            acc_weighted_hidden_state['out_of_sample_left_n_per_class_weighted'] = \
+                acc_weighted_left_hidden_state[3].tolist()
+
+            acc_weighted_hidden_state['in_sample_acc_weighted_right_hidden_state'] = \
+                acc_weighted_right_hidden_state[0]
+            acc_weighted_hidden_state['out_of_sample_acc_weighted_right_hidden_state'] = \
+                acc_weighted_right_hidden_state[1]
+            acc_weighted_hidden_state['in_sample_right_n_per_class_weighted'] = \
+                acc_weighted_right_hidden_state[2].tolist()
+            acc_weighted_hidden_state['out_of_sample_right_n_per_class_weighted'] = \
+                acc_weighted_right_hidden_state[3].tolist()
 
         results = {
             'name': diagnostic_config.name_of_model,
@@ -294,14 +373,7 @@ class DiagnosticClassifier:
             'out_of_sample_acc_right_hidden_states': acc_right_hidden_states[1],
             'in_sample_right_n_per_class_hidden': acc_right_hidden_states[2].tolist(),
             'out_of_sample_right_n_per_class_hidden': acc_right_hidden_states[3].tolist(),
-            'in_sample_acc_weighted_left_hidden_state': acc_weighted_left_hidden_state[0],
-            'out_of_sample_acc_weighted_left_hidden_state': acc_weighted_left_hidden_state[1],
-            'in_sample_left_n_per_class_weighted': acc_weighted_left_hidden_state[2].tolist(),
-            'out_of_sample_left_n_per_class_weighted': acc_weighted_left_hidden_state[3].tolist(),
-            'in_sample_acc_weighted_right_hidden_state': acc_weighted_right_hidden_state[0],
-            'out_of_sample_acc_weighted_right_hidden_state': acc_weighted_right_hidden_state[1],
-            'in_sample_right_n_per_class_weighted': acc_weighted_right_hidden_state[2].tolist(),
-            'out_of_sample_right_n_per_class_weighted': acc_weighted_right_hidden_state[3].tolist(),
+            'acc_weighted_hidden_state': acc_weighted_hidden_state
         }
 
         file = diagnostic_config.get_file_of_results(self.neural_language_model.config.name_of_model)

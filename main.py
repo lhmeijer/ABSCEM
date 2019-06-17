@@ -10,6 +10,7 @@ from abs_classifiers.lcr_rot_hop import LCRRotHopModel
 from abs_classifiers.svm import SVM
 from diagnostic_classifier.diagnostic_classifier import DiagnosticClassifier
 from local_interpretable_model.local_interpretable_model import LocalInterpretableModel
+from local_interpretable_model.plots_set_up import SingleSentencePlot
 import os
 
 
@@ -32,9 +33,9 @@ def main():
     ontology = False
     svm = False
     cabasc = False
-    lcr_rot = True
+    lcr_rot = False
     lcr_rot_inverse = False
-    lcr_rot_hop = False
+    lcr_rot_hop = True
 
     # Do you want to run a hybrid model, the ontology reasoner always runs the hybrid form to set up the
     # remaining data file. Therefore after running ontology reasoner once, you do not need to run it again
@@ -58,7 +59,8 @@ def main():
     }
 
     # Local Interpretable model, do you want it on or off, please set up the configuration in config.py
-    local_interpretable_model = True
+    local_interpretable_model = False
+    n_of_relevance_words = 10
 
     if ontology:
         # Running the ontology reasoner. Cannot use an explanation model for the ontology reasoner
@@ -98,8 +100,16 @@ def main():
 
         # Running Local Interpretable model on the LCR Rot model.
         if local_interpretable_model:
-            local_interpretable_model = LocalInterpretableModel(LocalInterpretableConfig, lcr_rot_model)
-            local_interpretable_model.run()
+            local_interpretable_model_config = LocalInterpretableConfig
+            results_file = local_interpretable_model_config.get_file_of_results(lcr_rot_model.config.name_of_model)
+
+            if not os.path.isfile(results_file):
+                local_interpretable_model = LocalInterpretableModel(local_interpretable_model_config, lcr_rot_model)
+                local_interpretable_model.run()
+
+            single_sentence_plot = SingleSentencePlot(local_interpretable_model_config,
+                                                      lcr_rot_model.config.name_of_model)
+            single_sentence_plot.plot(n_of_relevance_words)
 
     if lcr_rot_inverse:
         # Run Diagnostic classifiers on the LCR Rot inverse model

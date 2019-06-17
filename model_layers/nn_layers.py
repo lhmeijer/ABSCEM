@@ -1,4 +1,3 @@
-import numpy as np
 import tensorflow as tf
 
 
@@ -52,7 +51,6 @@ def softmax_layer(inputs, n_hidden, random_base, keep_prob, l2_reg, n_class, sco
     b = tf.get_variable(
         name='softmax_b' + scope_name,
         shape=[n_class],
-        # initializer=tf.random_normal_initializer(mean=0., stddev=np.sqrt(2. / (n_class))),
         initializer=tf.random_uniform_initializer(-0., 0.),
         regularizer=tf.contrib.layers.l2_regularizer(l2_reg)
     )
@@ -62,4 +60,3 @@ def softmax_layer(inputs, n_hidden, random_base, keep_prob, l2_reg, n_class, sco
         predict = tf.matmul(outputs, w) + b
         predict = tf.nn.softmax(predict)
     return predict
-

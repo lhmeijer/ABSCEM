@@ -1,5 +1,6 @@
 import numpy as np
-from local_interpretable_model.attribute_evaluator import LASSORegression, PredictionDifference
+from local_interpretable_model.attribute_evaluator import MyLinearRegression, PredictionDifference, \
+    SingleSetRegression, SingleSetPredictionDifference
 import json
 
 
@@ -14,6 +15,7 @@ class LocalInterpretableModel:
         x = np.array(self.neural_language_model.internal_data_loader.word_embeddings_training_all)
         aspects_indices = np.array(self.neural_language_model.internal_data_loader.aspect_indices_training)
         lemmatized_sentence = np.array(self.neural_language_model.internal_data_loader.lemmatized_training)
+        sentences_id = self.neural_language_model.internal_data_loader.sentence_id_in_training
         aspects = np.array(self.neural_language_model.internal_data_loader.aspects_training)
         aspects_categories = np.array(self.neural_language_model.internal_data_loader.categories_matrix_training)
         aspects_polarities = np.array(self.neural_language_model.internal_data_loader.polarity_matrix_training)
@@ -36,7 +38,7 @@ class LocalInterpretableModel:
 
         results = [model_information]
 
-        for index in range(x.shape[0]):
+        for index in range(1):
 
             print("index ", index)
 
@@ -52,35 +54,43 @@ class LocalInterpretableModel:
                                                                                                    y_neighbours,
                                                                                                    lemmatized_sentence
                                                                                                    [index], true_y)
+            word_evaluator_regression = SingleSetRegression()
+            word_relevance_linear_regression = word_evaluator_regression.evaluate_word_relevance(x_neighbours,
+                                                                                                 y_neighbours,
+                                                                                                 lemmatized_sentence
+                                                                                                 [index])
+            word_evaluator_difference = SingleSetPredictionDifference()
+            word_relevance_prediction_difference = word_evaluator_difference.evaluate_word_relevance(
+                x[index], aspects_indices[index], y_pred[index], lemmatized_sentence[index],
+                self.neural_language_model)
 
-            word_relevance = []
+            attribute_evaluator_regression = MyLinearRegression(self.config.n_of_subset)
+            subsets_word_relevance_linear_regression = attribute_evaluator_regression.evaluate_attributes(
+                attributes_indices, attributes_words, x_neighbours, y_neighbours)
 
-            if isinstance(self.config.attribute_evaluator, LASSORegression):
-
-                word_relevance = self.config.attribute_evaluator.evaluate_attributes(attributes_indices, x_neighbours,
-                                                                                     y_neighbours,
-                                                                                     aspects_polarities[index])
-
-            elif isinstance(self.config.attribute_evaluator, PredictionDifference):
-
-                word_relevance = self.config.attribute_evaluator.evaluate_attributes(attributes_indices,
-                                                                                     attributes_words, x[index],
-                                                                                     aspects_indices[index],
-                                                                                     y_pred[index],
-                                                                                     self.neural_language_model)
+            attribute_evaluator_difference = PredictionDifference(self.config.n_of_subset)
+            subsets_word_relevance_pred_difference = attribute_evaluator_difference.evaluate_attributes(
+                attributes_indices, attributes_words, x[index], aspects_indices[index], y_pred[index],
+                self.neural_language_model)
 
             result = {
+                'sentence_id': sentences_id[index],
                 'lemmatized_sentence': lemmatized_sentence[index],
                 'aspects': aspects[index],
                 'aspect_category_matrix': aspects_categories[index].tolist(),
                 'aspect_polarity_matrix': aspects_polarities[index].tolist(),
-                'word_relevance_per_set': word_relevance
+                'subsets_word_relevance_linear_regression': subsets_word_relevance_linear_regression,
+                'subsets_word_relevance_pred_difference': subsets_word_relevance_pred_difference,
+                'word_relevance_linear_regression': word_relevance_linear_regression,
+                'word_relevance_prediction_difference': word_relevance_prediction_difference
             }
             print("result ", result)
 
             results.append(result)
+            print("results ", results)
 
-        with open(self.config.file_of_results, 'w') as outfile:
+        file = self.config.get_file_of_results(self.neural_language_model.config.name_of_model)
+        with open(file, 'w') as outfile:
             json.dump(results, outfile, ensure_ascii=False)
 
 

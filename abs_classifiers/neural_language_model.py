@@ -12,7 +12,6 @@ class NeuralLanguageModel:
         self.keep_prob1 = tf.placeholder(tf.float32)
         self.keep_prob2 = tf.placeholder(tf.float32)
 
-        # with tf.name_scope('inputs'):
         self.left_part = tf.placeholder(tf.float32, [None, self.config.max_sentence_length,
                                                      self.config.embedding_dimension])
         self.left_sen_len = tf.placeholder(tf.int32, [None])
@@ -68,7 +67,8 @@ class NeuralLanguageModel:
                 self.config.split_embeddings(x_test, test_aspects, self.config.max_sentence_length,
                                              self.config.max_target_length)
 
-            def get_batch_data(x_left, len_left, x_right, len_right, yi, x_target, len_target, batch_size, kp1, kp2, is_shuffle=True):
+            def get_batch_data(x_left, len_left, x_right, len_right, yi, x_target, len_target, batch_size, kp1, kp2,
+                               is_shuffle=True):
                 for index in self.internal_data_loader.batch_index(len(yi), batch_size, is_shuffle):
                     feed_dict = {
                         self.left_part: x_left[index],
@@ -90,14 +90,11 @@ class NeuralLanguageModel:
                 train_acc, train_cnt = 0., 0
 
                 for train, train_num in get_batch_data(tr_left_part, tr_left_sen_len, tr_right_part, tr_right_sen_len,
-                                                       y_train, tr_target_part, tr_tar_len, self.config.batch_size, self.config.keep_prob1, self.config.keep_prob2):
-                    # print("train ", train)
-                    _, step, _train_acc, _true_y, _pred_y,  _prob, _layer_information = session.run([optimizer, self.global_step, acc_num, true_y, pred_y, self.prob, self.layer_information], feed_dict=train)
-                    # print("_layer_information ", _layer_information)
-                    # print("_true_y ", _true_y)
-                    # print("_pred_y ", _pred_y)
-
-                    # print("_train_acc ", _train_acc)
+                                                       y_train, tr_target_part, tr_tar_len, self.config.batch_size,
+                                                       self.config.keep_prob1, self.config.keep_prob2):
+                    _, step, _train_acc, _true_y, _pred_y,  _prob, _layer_information = session.run(
+                        [optimizer, self.global_step, acc_num, true_y, pred_y, self.prob, self.layer_information],
+                        feed_dict=train)
                     train_acc += _train_acc
                     train_cnt += train_num
 
@@ -229,5 +226,3 @@ class NeuralLanguageModel:
 
             with open(self.config.file_of_results, 'w') as outfile:
                 json.dump(results, outfile, ensure_ascii=False)
-
-
