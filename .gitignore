@@ -26,6 +26,9 @@ results/diagnostic_classifiers/
 # results/local_interpretable_models
 results/local_interpretable_models/
 
+# diagnostic_classifier/model_savings
+diagnostic_classifier/model_savings/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

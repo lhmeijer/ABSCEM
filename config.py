@@ -205,8 +205,13 @@ class DiagnosticClassifierPOSConfig(Config):
         batch_size=20,
         random_base=0.1,
         number_of_classes=5,
-        model_name=name_of_model
+        dimension=300
     )
+
+    @staticmethod
+    def get_file_of_model_savings(name_of_nlm, name_of_hidden_state):
+        return "diagnostic_classifier/model_savings/" + str(Config.year) + "/pos_tags/" + name_of_nlm + "_" + \
+               name_of_hidden_state + "tf.model"
 
     @staticmethod
     def get_file_of_results(name_of_nlm):
@@ -225,8 +230,13 @@ class DiagnosticClassifierPolarityConfig(Config):
         batch_size=20,
         random_base=0.1,
         number_of_classes = 3,
-        model_name=name_of_model
+        dimension=300
     )
+
+    @staticmethod
+    def get_file_of_model_savings(name_of_nlm, name_of_hidden_state):
+        return "diagnostic_classifier/model_savings/" + str(Config.year) + "/polarities/" + name_of_nlm + "_" + \
+               name_of_hidden_state + "tf.model"
 
     @staticmethod
     def get_file_of_results(name_of_nlm):
@@ -246,13 +256,19 @@ class DiagnosticClassifierRelationConfig(Config):
         batch_size=20,
         random_base=0.1,
         number_of_classes = 2,
-        model_name=name_of_model
+        dimension=300
     )
+
+    @staticmethod
+    def get_file_of_model_savings(name_of_nlm, name_of_hidden_state):
+        return "diagnostic_classifier/model_savings/" + str(Config.year) + "/relations/" + name_of_nlm + "_" + \
+               name_of_hidden_state + "tf.model"
 
     @staticmethod
     def get_file_of_results(name_of_nlm):
         return "results/diagnostic_classifiers/" + str(Config.year) + "/" + name_of_nlm + \
                "_relation_towards_aspect.json"
+
 
 class DiagnosticClassifierMentionConfig(Config):
 
@@ -265,9 +281,14 @@ class DiagnosticClassifierMentionConfig(Config):
         keep_prob=0.8,
         batch_size=20,
         random_base=0.1,
-        number_of_classes = 14,
-        model_name=name_of_model
+        number_of_classes=14,
+        dimension=300
     )
+
+    @staticmethod
+    def get_file_of_model_savings(name_of_nlm, name_of_hidden_state):
+        return "diagnostic_classifier/model_savings/" + str(Config.year) + "/mentions/" + name_of_nlm + "_" + \
+               name_of_hidden_state + "tf.model"
 
     @staticmethod
     def get_file_of_results(name_of_nlm):
@@ -298,3 +319,17 @@ class LocalInterpretableConfig(Config):
                             rule_based_classifier_name=rule_based_classifier_name):
         return "results/local_interpretable_models/" + str(Config.year) + "/" + name_of_nlm + "_" + \
                       locality_model_name + "_" + rule_based_classifier_name + ".json"
+
+
+class ExplanationModelConfig(Config):
+
+    classifier = SingleMLPClassifier(
+        learning_rate=0.001,
+        number_hidden_units=300,
+        number_of_epochs=100,
+        keep_prob=0.8,
+        batch_size=20,
+        random_base=0.1,
+        number_of_classes=14,
+        dimension=300
+    )

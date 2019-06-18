@@ -26,7 +26,7 @@ class LocalInterpretableModel:
                                                                self.neural_language_model.config.max_target_length)
 
         y_pred, _ = self.neural_language_model.predict(np.array(x_left_part), np.array(x_target_part),
-                                                       np.array(x_right_part),np.array(x_left_sen_len),
+                                                       np.array(x_right_part), np.array(x_left_sen_len),
                                                        np.array(x_tar_len), np.array(x_right_sen_len))
 
         model_information = {
@@ -93,7 +93,30 @@ class LocalInterpretableModel:
         with open(file, 'w') as outfile:
             json.dump(results, outfile, ensure_ascii=False)
 
+    def single_run(self, x, aspects_polarity, y_pred, aspects_indices, lemmatized_sentence):
 
+        x_neighbours, y_neighbours = self.config.locality_model.get_neighbours(x, aspects_indices,
+                                                                               self.neural_language_model)
 
+        true_y = np.argmax(aspects_polarity)
 
+        attributes_indices, attributes_words = self.config.rule_based_classifier.extract_rules(x_neighbours,
+                                                                                               y_neighbours,
+                                                                                               lemmatized_sentence,
+                                                                                               true_y)
+        word_evaluator_regression = SingleSetRegression()
+        relevance_lr = word_evaluator_regression.evaluate_word_relevance(x_neighbours, y_neighbours,
+                                                                         lemmatized_sentence)
+        word_evaluator_difference = SingleSetPredictionDifference()
+        relevance_pd = word_evaluator_difference.evaluate_word_relevance(
+            x, aspects_indices, y_pred, lemmatized_sentence, self.neural_language_model)
 
+        attribute_evaluator_regression = MyLinearRegression(self.config.n_of_subset)
+        subsets_relevance_lr = attribute_evaluator_regression.evaluate_attributes(
+            attributes_indices, attributes_words, x_neighbours, y_neighbours)
+
+        attribute_evaluator_difference = PredictionDifference(self.config.n_of_subset)
+        subsets_relevance_pd = attribute_evaluator_difference.evaluate_attributes(
+            attributes_indices, attributes_words, x, aspects_indices, y_pred, self.neural_language_model)
+
+        return relevance_lr, relevance_pd, subsets_relevance_lr, subsets_relevance_pd

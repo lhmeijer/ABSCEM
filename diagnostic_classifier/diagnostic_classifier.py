@@ -260,25 +260,37 @@ class DiagnosticClassifier:
         left_random_indices = [y for x in left_random_indices for y in x]
         right_random_indices = [y for x in right_random_indices for y in x]
 
+        file = DiagnosticClassifierPolarityConfig.get_file_of_model_savings(
+            self.neural_language_model.config.name_of_model, 'left_embeddings')
+
         acc_left_word_embeddings = diagnostic_config.classifier.fit(
             np.array(tr_feature_values['left_word_embeddings'])[left_random_indices], tr_left_y[left_random_indices],
             np.array(te_feature_values['left_word_embeddings']), np.array(te_feature_values[interest+'_per_word_left']),
-            self.neural_language_model)
+            self.neural_language_model, file)
+
+        file = DiagnosticClassifierPolarityConfig.get_file_of_model_savings(
+            self.neural_language_model.config.name_of_model, 'right_embeddings')
 
         acc_right_word_embeddings = diagnostic_config.classifier.fit(
             np.array(tr_feature_values['right_word_embeddings'])[right_random_indices],
             tr_right_y[right_random_indices],  np.array(te_feature_values['right_word_embeddings']),
-            np.array(te_feature_values[interest+'_per_word_right']), self.neural_language_model)
+            np.array(te_feature_values[interest+'_per_word_right']), self.neural_language_model, file)
+
+        file = DiagnosticClassifierPolarityConfig.get_file_of_model_savings(
+            self.neural_language_model.config.name_of_model, 'left_states')
 
         acc_left_hidden_states = diagnostic_config.classifier.fit(
             np.array(tr_feature_values['left_hidden_states'])[left_random_indices], tr_left_y[left_random_indices],
             np.array(te_feature_values['left_hidden_states']), np.array(te_feature_values[interest+'_per_word_left']),
-            self.neural_language_model)
+            self.neural_language_model, file)
+
+        file = DiagnosticClassifierPolarityConfig.get_file_of_model_savings(
+            self.neural_language_model.config.name_of_model, 'right_states')
 
         acc_right_hidden_states = diagnostic_config.classifier.fit(
             np.array(tr_feature_values['right_hidden_states'])[right_random_indices], tr_right_y[right_random_indices],
             np.array(te_feature_values['right_hidden_states']), np.array(te_feature_values[interest+'_per_word_right']),
-            self.neural_language_model)
+            self.neural_language_model, file)
 
         acc_weighted_hidden_state = {}
         tr_dict_weighted_hidden_states = tr_feature_values['weighted_hidden_state']
@@ -287,17 +299,24 @@ class DiagnosticClassifier:
         if self.neural_language_model.config.name_of_model == "LCR_Rot_hop_model":
 
             for i in range(self.neural_language_model.config.n_iterations_hop):
+
+                file = DiagnosticClassifierPolarityConfig.get_file_of_model_savings(
+                    self.neural_language_model.config.name_of_model, 'left_weighted' + str(i))
+
                 acc_weighted_left_hidden_state = diagnostic_config.classifier.fit(
                     np.array(tr_dict_weighted_hidden_states['weighted_left_hidden_state' + str(i)])
                     [left_random_indices], tr_left_y[left_random_indices],
                     np.array(te_dict_weighted_hidden_states['weighted_left_hidden_state' + str(i)]),
-                    np.array(te_feature_values[interest + '_per_word_left']), self.neural_language_model)
+                    np.array(te_feature_values[interest + '_per_word_left']), self.neural_language_model, file)
+
+                file = DiagnosticClassifierPolarityConfig.get_file_of_model_savings(
+                    self.neural_language_model.config.name_of_model, 'right_weighted' + str(i))
 
                 acc_weighted_right_hidden_state = diagnostic_config.classifier.fit(
                     np.array(tr_dict_weighted_hidden_states['weighted_right_hidden_state' + str(i)])
                     [right_random_indices], tr_right_y[right_random_indices],
                     np.array(te_dict_weighted_hidden_states['weighted_right_hidden_state' + str(i)]),
-                    np.array(te_feature_values[interest + '_per_word_right']), self.neural_language_model)
+                    np.array(te_feature_values[interest + '_per_word_right']), self.neural_language_model, file)
 
                 acc_weighted_hidden_state['in_sample_acc_weighted_left_hidden_state' + str(i)] = \
                     acc_weighted_left_hidden_state[0]
@@ -317,17 +336,23 @@ class DiagnosticClassifier:
                 acc_weighted_hidden_state['out_of_sample_right_n_per_class_weighted' + str(i)] = \
                     acc_weighted_right_hidden_state[3].tolist()
         else:
+            file = DiagnosticClassifierPolarityConfig.get_file_of_model_savings(
+                self.neural_language_model.config.name_of_model, 'left_weighted')
+
             acc_weighted_left_hidden_state = diagnostic_config.classifier.fit(
                 np.array(tr_dict_weighted_hidden_states['weighted_left_hidden_state'])[left_random_indices],
                 tr_left_y[left_random_indices],
                 np.array(te_dict_weighted_hidden_states['weighted_left_hidden_state']),
-                np.array(te_feature_values[interest + '_per_word_left']), self.neural_language_model)
+                np.array(te_feature_values[interest + '_per_word_left']), self.neural_language_model, file)
+
+            file = DiagnosticClassifierPolarityConfig.get_file_of_model_savings(
+                self.neural_language_model.config.name_of_model, 'right_weighted')
 
             acc_weighted_right_hidden_state = diagnostic_config.classifier.fit(
                 np.array(tr_dict_weighted_hidden_states['weighted_right_hidden_state'])[right_random_indices],
                 tr_right_y[right_random_indices],
                 np.array(te_dict_weighted_hidden_states['weighted_right_hidden_state']),
-                np.array(te_feature_values[interest + '_per_word_right']), self.neural_language_model)
+                np.array(te_feature_values[interest + '_per_word_right']), self.neural_language_model, file)
 
             acc_weighted_hidden_state['in_sample_acc_weighted_left_hidden_state'] = acc_weighted_left_hidden_state[0]
             acc_weighted_hidden_state['out_of_sample_acc_weighted_left_hidden_state'] = \

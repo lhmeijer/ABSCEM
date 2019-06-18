@@ -5,15 +5,22 @@ import numpy as np
 class SingleMLPClassifier:
 
     def __init__(self, learning_rate, number_hidden_units, number_of_epochs, keep_prob, batch_size, random_base,
-                 number_of_classes, model_name):
+                 number_of_classes, dimension):
         self.learning_rate = learning_rate
         self.number_hidden_units = number_hidden_units
         self.number_of_epochs = number_of_epochs
         self.keep_prob = keep_prob
         self.batch_size = batch_size
         self.random_base = random_base
-        self.model_name = model_name
         self.number_of_classes = number_of_classes
+        self.dimension = dimension
+
+        self.keep_prob = tf.placeholder(tf.float32)
+        self.x = tf.placeholder(tf.float32, [None, dimension])
+        self.predictions = self.multilayer_perceptron(self.x, self.keep_prob, dimension, number_hidden_units,
+                                                      random_base, number_of_classes)
+
+        self.saver = tf.train.Saver(write_version=tf.train.SaverDef.V2, max_to_keep=1000)
 
     def multilayer_perceptron(self, x, keep_prob, n_input, number_hidden_units, random_base, n_classes):
 
@@ -44,32 +51,27 @@ class SingleMLPClassifier:
         }
 
         x_drop_out = tf.nn.dropout(x, rate=(1-keep_prob))
-
         layer_1 = tf.add(tf.matmul(x_drop_out, weights['h1']), biases['b1'])
         layer_1 = tf.nn.relu(layer_1)
         out_layer = tf.add(tf.matmul(layer_1, weights['out']), biases['out'])
         out_layer = tf.nn.softmax(out_layer)
         return out_layer
 
-    def fit(self, train_x, train_y, test_x, test_y, nlm):
+    def fit(self, train_x, train_y, test_x, test_y, nlm, file_to_save):
 
         tf.reset_default_graph()
 
-        keep_prob = tf.placeholder(tf.float32)
+        y = tf.placeholder(tf.float32, [None, self.number_of_classes])
 
         dimension = train_x.shape[1]
 
-        x = tf.placeholder(tf.float32, [None, dimension])
-        y = tf.placeholder(tf.float32, [None, self.number_of_classes])
-
-        predictions = self.multilayer_perceptron(x, keep_prob, dimension, self.number_hidden_units, self.random_base, self.number_of_classes)
-        loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(logits=predictions, labels=y))
-        acc_num, acc_prob = nlm.config.accuracy_function(y, predictions)
+        loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(logits=self.predictions, labels=y))
+        acc_num, acc_prob = nlm.config.accuracy_function(y, self.predictions)
 
         optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(loss)
 
         true_y = tf.argmax(y, 1)
-        pred_y = tf.argmax(predictions, 1)
+        pred_y = tf.argmax(self.predictions, 1)
 
         tf_config = tf.ConfigProto(allow_soft_placement=True)
         tf_config.gpu_options.allow_growth = True
@@ -80,9 +82,9 @@ class SingleMLPClassifier:
             def get_batch_data(xi, yi, batch_size, kp, n_in, n_hidden, r_base, n_class, is_shuffle=True):
                 for index in nlm.internal_data_loader.batch_index(len(yi), batch_size, is_shuffle):
                     feed_dict = {
-                        x: xi[index],
+                        self.x: xi[index],
                         y: yi[index],
-                        keep_prob: kp,
+                        self.keep_prob: kp,
                     }
                     yield feed_dict, len(index)
 
@@ -102,10 +104,10 @@ class SingleMLPClassifier:
                 tr_true_n_per_class = np.zeros(self.number_of_classes, dtype=int)
 
                 for train, train_num in get_batch_data(train_x, train_y, self.batch_size, self.keep_prob,
-                                                       dimension, self.number_hidden_units, self.random_base,
+                                                       self.dimension, self.number_hidden_units, self.random_base,
                                                        self.number_of_classes):
                     _, _train_acc, tr_pred_y, tr_true_y = sess.run([optimizer, acc_num, pred_y, true_y],
-                                                                     feed_dict=train)
+                                                                   feed_dict=train)
                     train_acc += _train_acc
                     train_cnt += train_num
                     for i in range(tr_pred_y.shape[0]):
@@ -117,10 +119,10 @@ class SingleMLPClassifier:
                 te_pred_n_per_class = np.zeros(self.number_of_classes, dtype=int)
                 te_true_n_per_class = np.zeros(self.number_of_classes, dtype=int)
 
-                for test, test_num in get_batch_data(test_x, test_y, 2000, 1.0, dimension, self.number_hidden_units,
+                for test, test_num in get_batch_data(test_x, test_y, 2000, 1.0, self.dimension, self.number_hidden_units,
                                                      self.random_base, self.number_of_classes, False):
                     _loss, _test_acc, te_true_y, te_pred_y, _prob = sess.run([loss, acc_num, true_y, pred_y,
-                                                                              predictions], feed_dict=test)
+                                                                              self.predictions], feed_dict=test)
                     test_acc += _test_acc
                     test_cost += _loss * test_num
                     test_cnt += test_num
@@ -144,9 +146,22 @@ class SingleMLPClassifier:
                     max_tr_true_n_per_class = tr_true_n_per_class
                     max_te_true_n_per_class = te_true_n_per_class
 
+            self.saver.save(sess, file_to_save)
+
             acc_tr_n_per_class = max_tr_pred_n_per_class / max_tr_true_n_per_class
             acc_te_n_per_class = max_te_pred_n_per_class / max_te_true_n_per_class
 
             return [max_train_acc, max_test_acc, acc_tr_n_per_class, acc_te_n_per_class]
 
+    def predict(self, x, file_to_save):
 
+        feed_dict = {
+            self.x: x,
+            self.keep_prob: 1.0,
+        }
+
+        with tf.Session() as session:
+            # restore the model
+            self.saver.restore(session, file_to_save)
+            predictions = session.run([self.predictions], feed_dict=feed_dict)
+        return predictions

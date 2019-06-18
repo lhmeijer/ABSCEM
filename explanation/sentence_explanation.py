@@ -1,4 +1,6 @@
 import numpy as np
+from config import DiagnosticClassifierPOSConfig, DiagnosticClassifierPolarityConfig, \
+    DiagnosticClassifierRelationConfig, DiagnosticClassifierMentionConfig
 
 
 class SentenceExplaining:
@@ -23,11 +25,6 @@ class SentenceExplaining:
         y_training = np.array(self.neural_language_model.internal_data_loader.polarity_matrix_training)
         lemmatized_sentence = self.neural_language_model.internal_data_loader.lemmatized_training
 
-        mentions = np.array(self.neural_language_model.internal_data_loader.word_mentions_training)
-        polarities = np.array(self.neural_language_model.internal_data_loader.word_polarities_training)
-        relations = np.array(self.neural_language_model.internal_data_loader.word_relations_training)
-        pos_tags = np.array(self.neural_language_model.internal_data_loader.part_of_speech_training)
-
         x_left_part, x_target_part, x_right_part, x_left_sen_len, x_tar_len, x_right_sen_len = \
             self.neural_language_model.config.split_embeddings(np.array([x_training[sentence_index]]),
                                                                np.array([train_aspects[sentence_index]]),
@@ -41,98 +38,280 @@ class SentenceExplaining:
             'neural_language_model': self.neural_language_model.config.name_of_model
         }
 
-        left_word_embeddings = []
-        right_word_embeddings = []
-        left_hidden_states = []
-        right_hidden_states = []
+        relevance_lr, relevance_pd, subsets_relevance_lr, subsets_relevance_pd = \
+            self.local_interpretable_model.single_run(x=np.array([x_training[sentence_index]]),
+                                                      aspects_polarity=y_training[sentence_index],
+                                                      y_pred=pred,
+                                                      aspects_indices=np.array([train_aspects[sentence_index]]),
+                                                      lemmatized_sentence=lemmatized_sentence[sentence_index])
 
         weighted_hidden_state = {}
-
-        if self.neural_language_model.config.name_of_model == "LCR_Rot_hop_model":
-
-            for i in range(self.neural_language_model.config.n_iterations_hop):
-                weighted_hidden_state['weighted_left_hidden_state' + str(i)] = []
-                weighted_hidden_state['weighted_right_hidden_state' + str(i)] = []
-        else:
-            weighted_hidden_state['weighted_left_hidden_state'] = []
-            weighted_hidden_state['weighted_right_hidden_state'] = []
-
-        mentions_per_word_left = []
-        mentions_count_left = np.zeros(len(mentions[0][0]), dtype=int)
-        mentions_per_word_right = []
-        mentions_count_right = np.zeros(len(mentions[0][0]), dtype=int)
-
-        polarities_per_word_left = []
-        polarities_count_left = np.zeros(len(polarities[0][0]), dtype=int)
-        polarities_per_word_right = []
-        polarities_count_right = np.zeros(len(polarities[0][0]), dtype=int)
-
-        relations_per_word_left = []
-        relations_count_left = np.zeros(len(relations[0][0]), dtype=int)
-        relations_per_word_right = []
-        relations_count_right = np.zeros(len(relations[0][0]), dtype=int)
-
-        pos_tags_per_word_left = []
-        pos_tags_count_left = np.zeros(len(pos_tags[0][0]), dtype=int)
-        pos_tags_per_word_right = []
-        pos_tags_count_right = np.zeros(len(pos_tags[0][0]), dtype=int)
 
         n_left_words = x_left_sen_len[0]
 
         for j in range(n_left_words):
 
-            left_word_embeddings = x_left_part[0][j].tolist()
-            left_hidden_states = layer_information['left_hidden_state'][0][j].tolist()
+            dict_of_word = {
+                'relevance_linear_regression': relevance_lr[j],
+                'relevance_pred_difference': relevance_pd[j]
+            }
+
+            left_word_embedding = x_left_part[0][j].tolist()
+            left_hidden_state = layer_information['left_hidden_state'][0][j].tolist()
 
             if self.neural_language_model.config.name_of_model == "LCR_Rot_hop_model":
 
                 for i in range(self.neural_language_model.config.n_iterations_hop):
-                    weighted_hidden_state['left_attention_score' + str(i)] = \
+                    dict_of_word['attention_score' + str(i)] = \
                         layer_information['left_attention_score' + str(i)][0][j].tolist()
                     weighted_hidden_state['weighted_left_hidden_state' + str(i)] = \
                         layer_information['weighted_left_hidden_state' + str(i)][0][j].tolist()
             else:
-                weighted_hidden_state['left_attention_score'] = \
-                    layer_information['left_attention_score'][0][j].tolist()
+                dict_of_word['attention_score'] = layer_information['left_attention_score'][0][j].tolist()
                 weighted_hidden_state['weighted_left_hidden_state'] = \
                     layer_information['weighted_left_hidden_state'][0][j].tolist()
 
-            mentions_per_word_left = mentions[sentence_index][j]
-            polarities_per_word_left = polarities[sentence_index][j]
-            relations_per_word_left = relations[sentence_index][j]
-            pos_tags_per_word_left = pos_tags[sentence_index][j]
+            # Diagnostic Classifier for Part of Speech Tagging
+            file = DiagnosticClassifierPOSConfig.get_file_of_model_savings(
+                self.neural_language_model.config.name_of_model, 'left_embeddings')
+            dict_of_word['embedding_pred_pos_tags'] = \
+                DiagnosticClassifierPOSConfig.classifier.predict(left_word_embedding, file)
+            file = DiagnosticClassifierPOSConfig.get_file_of_model_savings(
+                self.neural_language_model.config.name_of_model, 'left_states')
+            dict_of_word['hidden_states_pred_pos_tags'] = \
+                DiagnosticClassifierPOSConfig.classifier.predict(left_hidden_state, file)
 
-            lemmatized_sentence[sentence_index][j]
+            if self.neural_language_model.config.name_of_model == "LCR_Rot_hop_model":
+                for i in range(self.neural_language_model.config.n_iterations_hop):
+                    file = DiagnosticClassifierPOSConfig.get_file_of_model_savings(
+                        self.neural_language_model.config.name_of_model, 'left_weighted' + str(i))
+                    dict_of_word['weighted_states_pred_pos_tags' + str(i)] = \
+                        DiagnosticClassifierPOSConfig.classifier.predict(
+                            weighted_hidden_state['weighted_left_hidden_state' + str(i)], file)
 
-        n_right_words = x_right_sen_len[index]
+            else:
+                file = DiagnosticClassifierPOSConfig.get_file_of_model_savings(
+                    self.neural_language_model.config.name_of_model, 'left_weighted')
+                dict_of_word['weighted_states_pred_pos_tags'] = \
+                    DiagnosticClassifierPOSConfig.classifier.predict(
+                        weighted_hidden_state['weighted_left_hidden_state'], file)
 
-        end_index = aspects[index][-1]
+            # Diagnostic Classifier for Polarity towards the aspect
+            file = DiagnosticClassifierPolarityConfig.get_file_of_model_savings(
+                self.neural_language_model.config.name_of_model, 'left_embeddings')
+            dict_of_word['embedding_pred_polarities'] = \
+                DiagnosticClassifierPolarityConfig.classifier.predict(left_word_embedding, file)
+            file = DiagnosticClassifierPolarityConfig.get_file_of_model_savings(
+                self.neural_language_model.config.name_of_model, 'left_states')
+            dict_of_word['hidden_states_pred_polarities'] = \
+                DiagnosticClassifierPolarityConfig.classifier.predict(left_hidden_state, file)
+
+            if self.neural_language_model.config.name_of_model == "LCR_Rot_hop_model":
+                for i in range(self.neural_language_model.config.n_iterations_hop):
+                    file = DiagnosticClassifierPolarityConfig.get_file_of_model_savings(
+                        self.neural_language_model.config.name_of_model, 'left_weighted' + str(i))
+                    dict_of_word['weighted_states_pred_polarities' + str(i)] = \
+                        DiagnosticClassifierPolarityConfig.classifier.predict(
+                            weighted_hidden_state['weighted_left_hidden_state' + str(i)], file)
+
+            else:
+                file = DiagnosticClassifierPolarityConfig.get_file_of_model_savings(
+                    self.neural_language_model.config.name_of_model, 'left_weighted')
+                dict_of_word['weighted_states_pred_polarities'] = \
+                    DiagnosticClassifierPolarityConfig.classifier.predict(
+                        weighted_hidden_state['weighted_left_hidden_state'], file)
+
+            # Diagnostic Classifier for relation towards the aspect
+            file = DiagnosticClassifierRelationConfig.get_file_of_model_savings(
+                self.neural_language_model.config.name_of_model, 'left_embeddings')
+            dict_of_word['embedding_pred_relations'] = \
+                DiagnosticClassifierRelationConfig.classifier.predict(left_word_embedding, file)
+            file = DiagnosticClassifierRelationConfig.get_file_of_model_savings(
+                self.neural_language_model.config.name_of_model, 'left_states')
+            dict_of_word['hidden_states_pred_relations'] = \
+                DiagnosticClassifierRelationConfig.classifier.predict(left_hidden_state, file)
+
+            if self.neural_language_model.config.name_of_model == "LCR_Rot_hop_model":
+                for i in range(self.neural_language_model.config.n_iterations_hop):
+                    file = DiagnosticClassifierRelationConfig.get_file_of_model_savings(
+                        self.neural_language_model.config.name_of_model, 'left_weighted' + str(i))
+                    dict_of_word['weighted_states_pred_relations' + str(i)] = \
+                        DiagnosticClassifierRelationConfig.classifier.predict(
+                            weighted_hidden_state['weighted_left_hidden_state' + str(i)], file)
+
+            else:
+                file = DiagnosticClassifierRelationConfig.get_file_of_model_savings(
+                    self.neural_language_model.config.name_of_model, 'left_weighted')
+                dict_of_word['weighted_states_pred_relations'] = \
+                    DiagnosticClassifierRelationConfig.classifier.predict(
+                        weighted_hidden_state['weighted_left_hidden_state'], file)
+
+            # Diagnostic Classifier for word mentions
+            file = DiagnosticClassifierMentionConfig.get_file_of_model_savings(
+                self.neural_language_model.config.name_of_model, 'left_embeddings')
+            dict_of_word['embedding_pred_mentions'] = \
+                DiagnosticClassifierMentionConfig.classifier.predict(left_word_embedding, file)
+            file = DiagnosticClassifierMentionConfig.get_file_of_model_savings(
+                self.neural_language_model.config.name_of_model, 'left_states')
+            dict_of_word['hidden_states_pred_mentions'] = \
+                DiagnosticClassifierMentionConfig.classifier.predict(left_hidden_state, file)
+
+            if self.neural_language_model.config.name_of_model == "LCR_Rot_hop_model":
+                for i in range(self.neural_language_model.config.n_iterations_hop):
+                    file = DiagnosticClassifierMentionConfig.get_file_of_model_savings(
+                        self.neural_language_model.config.name_of_model, 'left_weighted' + str(i))
+                    dict_of_word['weighted_states_pred_mentions' + str(i)] = \
+                        DiagnosticClassifierMentionConfig.classifier.predict(
+                            weighted_hidden_state['weighted_left_hidden_state' + str(i)], file)
+
+            else:
+                file = DiagnosticClassifierMentionConfig.get_file_of_model_savings(
+                    self.neural_language_model.config.name_of_model, 'left_weighted')
+                dict_of_word['weighted_states_pred_mentions'] = \
+                    DiagnosticClassifierMentionConfig.classifier.predict(
+                        weighted_hidden_state['weighted_left_hidden_state'], file)
+
+            sentence_explanation[lemmatized_sentence[sentence_index][j]] = dict_of_word
+
+        n_right_words = x_right_sen_len[0]
+        end_index = train_aspects[sentence_index][-1]
 
         for j in range(n_right_words):
-            right_word_embeddings.append(x_right_part[index][j].tolist())
-            right_hidden_states.append(tr_layer_information['right_hidden_state'][0][j].tolist())
+
+            dict_of_word = {
+                'relevance_linear_regression': relevance_lr[end_index + 1 + j],
+                'relevance_pred_difference': relevance_pd[end_index + 1 + j]
+            }
+
+            right_word_embedding = x_right_part[0][j].tolist()
+            right_hidden_state = layer_information['right_hidden_state'][0][j].tolist()
 
             if self.neural_language_model.config.name_of_model == "LCR_Rot_hop_model":
 
                 for i in range(self.neural_language_model.config.n_iterations_hop):
-                    weighted_hidden_state['weighted_right_hidden_state' + str(i)].append(
-                        tr_layer_information['weighted_right_hidden_state' + str(i)][0][j].tolist())
+                    dict_of_word['attention_score' + str(i)] = \
+                        layer_information['right_attention_score' + str(i)][0][j].tolist()
+                    weighted_hidden_state['weighted_right_hidden_state' + str(i)] = \
+                        layer_information['weighted_right_hidden_state' + str(i)][0][j].tolist()
             else:
-                weighted_hidden_state['weighted_right_hidden_state'].append(
-                    tr_layer_information['weighted_right_hidden_state'][0][j].tolist())
+                dict_of_word['attention_score'] = layer_information['right_attention_score'][0][j].tolist()
+                weighted_hidden_state['weighted_right_hidden_state'] = \
+                    layer_information['weighted_right_hidden_state'][0][j].tolist()
 
-            mentions_per_word_right.append(mentions[index][end_index + 1 + j])
-            index_of_one = mentions[index][end_index + 1 + j].index(1)
-            mentions_count_right[index_of_one] += 1
+            # Diagnostic Classifier for Part of Speech Tagging
+            file = DiagnosticClassifierPOSConfig.get_file_of_model_savings(
+                self.neural_language_model.config.name_of_model, 'right_embeddings')
+            dict_of_word['embedding_pred_pos_tags'] = \
+                DiagnosticClassifierPOSConfig.classifier.predict(right_word_embedding, file)
+            file = DiagnosticClassifierPOSConfig.get_file_of_model_savings(
+                self.neural_language_model.config.name_of_model, 'right_states')
+            dict_of_word['hidden_states_pred_pos_tags'] = \
+                DiagnosticClassifierPOSConfig.classifier.predict(right_hidden_state, file)
 
-            polarities_per_word_right.append(polarities[index][end_index + 1 + j])
-            index_of_one = polarities[index][end_index + 1 + j].index(1)
-            polarities_count_right[index_of_one] += 1
+            if self.neural_language_model.config.name_of_model == "LCR_Rot_hop_model":
+                for i in range(self.neural_language_model.config.n_iterations_hop):
+                    file = DiagnosticClassifierPOSConfig.get_file_of_model_savings(
+                        self.neural_language_model.config.name_of_model, 'right_weighted' + str(i))
+                    dict_of_word['weighted_states_pred_pos_tags' + str(i)] = \
+                        DiagnosticClassifierPOSConfig.classifier.predict(
+                            weighted_hidden_state['weighted_right_hidden_state' + str(i)], file)
 
-            relations_per_word_right.append(relations[index][end_index + 1 + j])
-            index_of_one = relations[index][end_index + 1 + j].index(1)
-            relations_count_right[index_of_one] += 1
+            else:
+                file = DiagnosticClassifierPOSConfig.get_file_of_model_savings(
+                    self.neural_language_model.config.name_of_model, 'right_weighted')
+                dict_of_word['weighted_states_pred_pos_tags'] = \
+                    DiagnosticClassifierPOSConfig.classifier.predict(
+                        weighted_hidden_state['weighted_right_hidden_state'], file)
 
-            pos_tags_per_word_right.append(pos_tags[index][end_index + 1 + j])
-            index_of_one = pos_tags[index][end_index + 1 + j].index(1)
-            pos_tags_count_right[index_of_one] += 1
+            # Diagnostic Classifier for Polarity towards the aspect
+            file = DiagnosticClassifierPolarityConfig.get_file_of_model_savings(
+                self.neural_language_model.config.name_of_model, 'right_embeddings')
+            dict_of_word['embedding_pred_polarities'] = \
+                DiagnosticClassifierPolarityConfig.classifier.predict(right_word_embedding, file)
+            file = DiagnosticClassifierPolarityConfig.get_file_of_model_savings(
+                self.neural_language_model.config.name_of_model, 'right_states')
+            dict_of_word['hidden_states_pred_polarities'] = \
+                DiagnosticClassifierPolarityConfig.classifier.predict(right_hidden_state, file)
+
+            if self.neural_language_model.config.name_of_model == "LCR_Rot_hop_model":
+                for i in range(self.neural_language_model.config.n_iterations_hop):
+                    file = DiagnosticClassifierPolarityConfig.get_file_of_model_savings(
+                        self.neural_language_model.config.name_of_model, 'right_weighted' + str(i))
+                    dict_of_word['weighted_states_pred_polarities' + str(i)] = \
+                        DiagnosticClassifierPolarityConfig.classifier.predict(
+                            weighted_hidden_state['weighted_right_hidden_state' + str(i)], file)
+
+            else:
+                file = DiagnosticClassifierPolarityConfig.get_file_of_model_savings(
+                    self.neural_language_model.config.name_of_model, 'right_weighted')
+                dict_of_word['weighted_states_pred_polarities'] = \
+                    DiagnosticClassifierPolarityConfig.classifier.predict(
+                        weighted_hidden_state['weighted_right_hidden_state'], file)
+
+            # Diagnostic Classifier for relation towards the aspect
+            file = DiagnosticClassifierRelationConfig.get_file_of_model_savings(
+                self.neural_language_model.config.name_of_model, 'right_embeddings')
+            dict_of_word['embedding_pred_relations'] = \
+                DiagnosticClassifierRelationConfig.classifier.predict(right_word_embedding, file)
+            file = DiagnosticClassifierRelationConfig.get_file_of_model_savings(
+                self.neural_language_model.config.name_of_model, 'right_states')
+            dict_of_word['hidden_states_pred_relations'] = \
+                DiagnosticClassifierRelationConfig.classifier.predict(right_hidden_state, file)
+
+            if self.neural_language_model.config.name_of_model == "LCR_Rot_hop_model":
+                for i in range(self.neural_language_model.config.n_iterations_hop):
+                    file = DiagnosticClassifierRelationConfig.get_file_of_model_savings(
+                        self.neural_language_model.config.name_of_model, 'right_weighted' + str(i))
+                    dict_of_word['weighted_states_pred_relations' + str(i)] = \
+                        DiagnosticClassifierRelationConfig.classifier.predict(
+                            weighted_hidden_state['weighted_right_hidden_state' + str(i)], file)
+
+            else:
+                file = DiagnosticClassifierRelationConfig.get_file_of_model_savings(
+                    self.neural_language_model.config.name_of_model, 'right_weighted')
+                dict_of_word['weighted_states_pred_relations'] = \
+                    DiagnosticClassifierRelationConfig.classifier.predict(
+                        weighted_hidden_state['weighted_right_hidden_state'], file)
+
+            # Diagnostic Classifier for word mentions
+            file = DiagnosticClassifierMentionConfig.get_file_of_model_savings(
+                self.neural_language_model.config.name_of_model, 'right_embeddings')
+            dict_of_word['embedding_pred_mentions'] = \
+                DiagnosticClassifierMentionConfig.classifier.predict(right_word_embedding, file)
+            file = DiagnosticClassifierMentionConfig.get_file_of_model_savings(
+                self.neural_language_model.config.name_of_model, 'right_states')
+            dict_of_word['hidden_states_pred_mentions'] = \
+                DiagnosticClassifierMentionConfig.classifier.predict(right_hidden_state, file)
+
+            if self.neural_language_model.config.name_of_model == "LCR_Rot_hop_model":
+                for i in range(self.neural_language_model.config.n_iterations_hop):
+                    file = DiagnosticClassifierMentionConfig.get_file_of_model_savings(
+                        self.neural_language_model.config.name_of_model, 'right_weighted' + str(i))
+                    dict_of_word['weighted_states_pred_mentions' + str(i)] = \
+                        DiagnosticClassifierMentionConfig.classifier.predict(
+                            weighted_hidden_state['weighted_right_hidden_state' + str(i)], file)
+
+            else:
+                file = DiagnosticClassifierMentionConfig.get_file_of_model_savings(
+                    self.neural_language_model.config.name_of_model, 'right_weighted')
+                dict_of_word['weighted_states_pred_mentions'] = \
+                    DiagnosticClassifierMentionConfig.classifier.predict(
+                        weighted_hidden_state['weighted_right_hidden_state'], file)
+
+            sentence_explanation[lemmatized_sentence[sentence_index][end_index + 1 + j]] = dict_of_word
+
+        counter = 0
+        for attribute in subsets_relevance_lr:
+            counter += 1
+            for word in attribute['word_attribute']:
+                dict_of_word = sentence_explanation[word]
+                dict_of_word['subset_linear_reg' + str(counter)] = attribute
+
+        counter = 0
+        for attribute in subsets_relevance_pd:
+            counter += 1
+            for word in attribute['word_attribute']:
+                dict_of_word = sentence_explanation[word]
+                dict_of_word['subset_pred_dif' + str(counter)] = attribute
+
+        print("sentence_explanation ", sentence_explanation)
