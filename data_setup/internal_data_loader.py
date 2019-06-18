@@ -190,3 +190,36 @@ class InternalDataLoader:
                 for line in file:
                     line = json.loads(line)
                     return np.array(line['test_set_indices'])
+
+    def split_embeddings(self, word_embeddings, aspect_indices, max_sentence_length, max_target_length):
+
+        number_of_sentences = np.shape(word_embeddings)
+
+        left_part = np.zeros((number_of_sentences[0], max_sentence_length, self.config.embedding_dimension),
+                             dtype=float)
+        right_part = np.zeros((number_of_sentences[0], max_sentence_length, self.config.embedding_dimension),
+                              dtype=float)
+        target_part = np.zeros((number_of_sentences[0], max_target_length, self.config.embedding_dimension),
+                               dtype=float)
+
+        words_in_left_context = np.zeros(number_of_sentences[0], dtype=int)
+        words_in_target = np.zeros(number_of_sentences[0], dtype=int)
+        words_in_right_context = np.zeros(number_of_sentences[0], dtype=int)
+
+        for index in range(number_of_sentences[0]):
+
+            begin_index_aspect = aspect_indices[index][0]
+            end_index_aspect = aspect_indices[index][-1]
+
+            np_word_embeddings = np.array(word_embeddings[index])
+            max_embeddings = np_word_embeddings.shape[0]
+
+            words_in_left_context[index] = begin_index_aspect
+            words_in_target[index] = (end_index_aspect - begin_index_aspect) + 1
+            words_in_right_context[index] = max_embeddings - (end_index_aspect + 1)
+
+            left_part[index][:words_in_left_context[index]] = np_word_embeddings[0:begin_index_aspect]
+            target_part[index][:words_in_target[index]] = np_word_embeddings[begin_index_aspect:end_index_aspect + 1]
+            right_part[index][:words_in_right_context[index]] = np_word_embeddings[end_index_aspect + 1:]
+
+        return left_part, target_part, right_part, words_in_left_context, words_in_target, words_in_right_context

@@ -47,7 +47,7 @@ class Perturbing:
             x_neighbours.append(sentence_representation)
 
         x_left_part, x_target_part, x_right_part, x_left_sen_len, x_tar_len, x_right_sen_len = \
-            neural_language_model.config.split_embeddings(np.array(neighbour_embeddings),
+            neural_language_model.internal_data_loader.split_embeddings(np.array(neighbour_embeddings),
                                                           np.array(neighbour_aspects),
                                                           neural_language_model.config.max_sentence_length,
                                                           neural_language_model.config.max_target_length)

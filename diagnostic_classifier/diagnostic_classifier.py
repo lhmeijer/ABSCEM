@@ -51,7 +51,7 @@ class DiagnosticClassifier:
     def create_feature_set(self, x, aspects, y, mentions, polarities, relations, pos_tags):
 
         x_left_part, x_target_part, x_right_part, x_left_sen_len, x_tar_len, x_right_sen_len = \
-            self.neural_language_model.config.split_embeddings(x, aspects,
+            self.neural_language_model.internal_data_loader.split_embeddings(x, aspects,
                                                                self.neural_language_model.config.max_sentence_length,
                                                                self.neural_language_model.config.max_target_length)
 

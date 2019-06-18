@@ -1,7 +1,5 @@
 import tensorflow as tf
-import numpy as np
 from diagnostic_classifier.classifiers import SingleMLPClassifier
-from local_interpretable_model.attribute_evaluator import MyLinearRegression, PredictionDifference
 from local_interpretable_model.locality_algorithms import Perturbing
 from local_interpretable_model.rule_based_classifier import RuleBasedClassifier
 
@@ -87,32 +85,6 @@ class CabascConfig(NeuralLanguageModelConfig):
     file_of_cross_val_results = "results/abs_classifiers/" + str(Config.year) + "/cross_val_" + name_of_model + "json"
     file_to_save_model = "data/model_savings/CABASC_model_" + str(Config.year) + "_tf.model"
 
-    @staticmethod
-    def split_embeddings(word_embeddings, aspect_indices, max_sentence_length, max_target_length):
-        number_of_sentences = np.shape(word_embeddings)
-
-        left_part = np.zeros((number_of_sentences[0], max_sentence_length, 300))
-        right_part = np.zeros((number_of_sentences[0], max_sentence_length, 300))
-
-        words_in_left_context = np.zeros(number_of_sentences[0], dtype=int)
-        words_in_right_context = np.zeros(number_of_sentences[0], dtype=int)
-
-        for index in range(number_of_sentences[0]):
-
-            begin_index_aspect = aspect_indices[index][0]
-            end_index_aspect = aspect_indices[index][-1]
-
-            np_word_embeddings = np.array(word_embeddings[index])
-            max_embeddings = np_word_embeddings.shape[0]
-
-            words_in_left_context[index] = end_index_aspect + 1
-            words_in_right_context[index] = max_embeddings - begin_index_aspect
-
-            left_part[index][:words_in_left_context[index]] = np_word_embeddings[0:end_index_aspect + 1]
-            right_part[index][:words_in_right_context[index]] = np_word_embeddings[begin_index_aspect:]
-
-        return left_part, None, right_part, words_in_left_context, None, words_in_right_context
-
 
 class LCR_RotConfig(NeuralLanguageModelConfig):
 
@@ -132,41 +104,10 @@ class LCR_RotConfig(NeuralLanguageModelConfig):
 
     file_of_results = "results/abs_classifiers/" + str(Config.year) + "/" + name_of_model + ".json"
     file_of_cross_val_results = "results/abs_classifiers/" + str(Config.year) + "/cross_val_" + name_of_model + "json"
-    file_to_save_model = "data/model_savings/LCR_Rot_model_" + str(Config.year) + "/tf.model"
+    file_to_save_model = "abs_classifiers/model_savings/" + str(Config.year) + "/lcr_rot_model/tf.model"
 
     tr_file_of_hidden_layers = "data/hidden_layers/" + str(Config.year) + "/training_" + name_of_model + ".json"
     te_file_of_hidden_layers = "data/hidden_layers/" + str(Config.year) + "/test_" + name_of_model + ".json"
-
-    @staticmethod
-    def split_embeddings(word_embeddings, aspect_indices, max_sentence_length, max_target_length):
-
-        number_of_sentences = np.shape(word_embeddings)
-
-        left_part = np.zeros((number_of_sentences[0], max_sentence_length, Config.embedding_dimension), dtype=float)
-        right_part = np.zeros((number_of_sentences[0], max_sentence_length, Config.embedding_dimension), dtype=float)
-        target_part = np.zeros((number_of_sentences[0], max_target_length, Config.embedding_dimension), dtype=float)
-
-        words_in_left_context = np.zeros(number_of_sentences[0], dtype=int)
-        words_in_target = np.zeros(number_of_sentences[0], dtype=int)
-        words_in_right_context = np.zeros(number_of_sentences[0], dtype=int)
-
-        for index in range(number_of_sentences[0]):
-
-            begin_index_aspect = aspect_indices[index][0]
-            end_index_aspect = aspect_indices[index][-1]
-
-            np_word_embeddings = np.array(word_embeddings[index])
-            max_embeddings = np_word_embeddings.shape[0]
-
-            words_in_left_context[index] = begin_index_aspect
-            words_in_target[index] = (end_index_aspect - begin_index_aspect) + 1
-            words_in_right_context[index] = max_embeddings - (end_index_aspect + 1)
-
-            left_part[index][:words_in_left_context[index]] = np_word_embeddings[0:begin_index_aspect]
-            target_part[index][:words_in_target[index]] = np_word_embeddings[begin_index_aspect:end_index_aspect + 1]
-            right_part[index][:words_in_right_context[index]] = np_word_embeddings[end_index_aspect + 1:]
-
-        return left_part, target_part, right_part, words_in_left_context, words_in_target, words_in_right_context
 
 
 class LCR_RotInverseConfig(LCR_RotConfig):
@@ -175,7 +116,7 @@ class LCR_RotInverseConfig(LCR_RotConfig):
 
     file_of_results = "results/abs_classifiers/" + str(Config.year) + "/" + name_of_model + ".json"
     file_of_cross_val_results = "results/abs_classifiers/" + str(Config.year) + "/cross_val_" + name_of_model + "json"
-    file_to_save_model = "data/model_savings/LCR_Rot_inverse_model_" + str(Config.year) + "/tf.model"
+    file_to_save_model = "abs_classifiers/model_savings/" + str(Config.year) + "/lcr_rot_inverse_model/tf.model"
     tr_file_of_hidden_layers = "data/hidden_layers/" + str(Config.year) + "/training_" + name_of_model + ".json"
     te_file_of_hidden_layers = "data/hidden_layers/" + str(Config.year) + "/test_" + name_of_model + ".json"
 
@@ -188,14 +129,13 @@ class LCR_RotHopConfig(LCR_RotConfig):
 
     file_of_results = "results/abs_classifiers/" + str(Config.year) + "/" + name_of_model + ".json"
     file_of_cross_val_results = "results/abs_classifiers/" + str(Config.year) + "/cross_val_" + name_of_model + "json"
-    file_to_save_model = "data/model_savings/LCR_Rot_hop_model_" + str(Config.year) + "/tf.model"
+    file_to_save_model = "abs_classifiers/model_savings/" + str(Config.year) + "/lcr_rot_hop_model/tf.model"
     tr_file_of_hidden_layers = "data/hidden_layers/" + str(Config.year) + "/training_" + name_of_model + ".json"
     te_file_of_hidden_layers = "data/hidden_layers/" + str(Config.year) + "/test_" + name_of_model + ".json"
 
 
 class DiagnosticClassifierPOSConfig(Config):
 
-    name_of_nlm = ""
     name_of_model = "diagnostic classifier for part of speech tagging"
     classifier = SingleMLPClassifier(
         learning_rate=0.001,
@@ -229,7 +169,7 @@ class DiagnosticClassifierPolarityConfig(Config):
         keep_prob=0.8,
         batch_size=20,
         random_base=0.1,
-        number_of_classes = 3,
+        number_of_classes=3,
         dimension=300
     )
 
@@ -247,7 +187,6 @@ class DiagnosticClassifierPolarityConfig(Config):
 class DiagnosticClassifierRelationConfig(Config):
 
     name_of_model = "diagnostic classifier for relations towards the aspects"
-    name_of_nlm = ""
     classifier = SingleMLPClassifier(
         learning_rate=0.001,
         number_hidden_units=300,
@@ -255,7 +194,7 @@ class DiagnosticClassifierRelationConfig(Config):
         keep_prob=0.8,
         batch_size=20,
         random_base=0.1,
-        number_of_classes = 2,
+        number_of_classes=2,
         dimension=300
     )
 
@@ -273,7 +212,6 @@ class DiagnosticClassifierRelationConfig(Config):
 class DiagnosticClassifierMentionConfig(Config):
 
     name_of_model = "diagnostic classifier for ontology mentions"
-    name_of_nlm = ""
     classifier = SingleMLPClassifier(
         learning_rate=0.001,
         number_hidden_units=300,
@@ -310,7 +248,7 @@ class LocalInterpretableConfig(Config):
     rule_based_classifier_name = "decision_tree"
     rule_based_classifier = RuleBasedClassifier(max_tree_depth)
 
-    # classifier to compute word relevance, linear regression or prediction difference
+    # classifier to compute word relevance, linear regression and prediction difference
     attribute_evaluator_name = "linear regression and prediction difference"
     n_of_subset = 3
 
@@ -319,17 +257,3 @@ class LocalInterpretableConfig(Config):
                             rule_based_classifier_name=rule_based_classifier_name):
         return "results/local_interpretable_models/" + str(Config.year) + "/" + name_of_nlm + "_" + \
                       locality_model_name + "_" + rule_based_classifier_name + ".json"
-
-
-class ExplanationModelConfig(Config):
-
-    classifier = SingleMLPClassifier(
-        learning_rate=0.001,
-        number_hidden_units=300,
-        number_of_epochs=100,
-        keep_prob=0.8,
-        batch_size=20,
-        random_base=0.1,
-        number_of_classes=14,
-        dimension=300
-    )

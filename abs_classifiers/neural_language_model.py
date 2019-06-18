@@ -60,11 +60,11 @@ class NeuralLanguageModel:
             session.run(tf.global_variables_initializer())
 
             tr_left_part, tr_target_part, tr_right_part, tr_left_sen_len, tr_tar_len, tr_right_sen_len = \
-                self.config.split_embeddings(x_train, train_aspects, self.config.max_sentence_length,
+                self.internal_data_loader.split_embeddings(x_train, train_aspects, self.config.max_sentence_length,
                                              self.config.max_target_length)
 
             te_left_part, te_target_part, te_right_part, te_left_sen_len, te_tar_len, te_right_sen_len = \
-                self.config.split_embeddings(x_test, test_aspects, self.config.max_sentence_length,
+                self.internal_data_loader.split_embeddings(x_test, test_aspects, self.config.max_sentence_length,
                                              self.config.max_target_length)
 
             def get_batch_data(x_left, len_left, x_right, len_right, yi, x_target, len_target, batch_size, kp1, kp2,

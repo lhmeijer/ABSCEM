@@ -26,7 +26,7 @@ class SentenceExplaining:
         lemmatized_sentence = self.neural_language_model.internal_data_loader.lemmatized_training
 
         x_left_part, x_target_part, x_right_part, x_left_sen_len, x_tar_len, x_right_sen_len = \
-            self.neural_language_model.config.split_embeddings(np.array([x_training[sentence_index]]),
+            self.neural_language_model.internal_data_loader.split_embeddings(np.array([x_training[sentence_index]]),
                                                                np.array([train_aspects[sentence_index]]),
                                                                self.neural_language_model.config.max_sentence_length,
                                                                self.neural_language_model.config.max_target_length)
