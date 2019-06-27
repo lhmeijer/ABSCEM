@@ -16,6 +16,9 @@ class OntologyReasoner:
         polarity_count = np.array([0, 0, 0])
         majority_count = np.array([0, 0, 0])
         with_backup_count = np.array([0, 0, 0])
+        able_to_predict_count = np.array([0, 0, 0])
+        concept_from_ontology = np.array([0, 0, 0, 0])
+        indices_able_to_predict = []
         indices_not_able_to_predict = []
 
         for index_sentence in range(number_of_sentences):
@@ -30,11 +33,10 @@ class OntologyReasoner:
             negation = False
 
             for negation_indices in sentence_negations[index_sentence]:
-
                 if len(negation_indices) == 2:
 
-                    aspect_relation_1 = aspects_relations[negation_indices[0]]
-                    aspect_relation_2 = aspects_relations[negation_indices[1]]
+                    aspect_relation_1 = aspects_relations[index_sentence][negation_indices[0]]
+                    aspect_relation_2 = aspects_relations[index_sentence][negation_indices[1]]
 
                     # check whether the negation words have a relationship with the aspect
                     if aspect_relation_1 == [1, 0] or aspect_relation_2 == [1, 0]:
@@ -42,7 +44,7 @@ class OntologyReasoner:
 
             for index_word in range(number_of_words_in_sentence):
 
-                if sentence_polarities[index_sentence][index_word] == [0, 0, 1]:
+                if sentence_polarities[index_sentence][index_word] == [1, 0, 0]:
 
                     if negation:
                         negative_polarities.append(True)
@@ -56,12 +58,21 @@ class OntologyReasoner:
                     else:
                         negative_polarities.append(True)
 
+            polarity_argmax = np.argmax(polarity_matrix[index_sentence])
             if True in positive_polarities and True not in negative_polarities:
+
+                concept_from_ontology[0] += 1
+                indices_able_to_predict.append(index_sentence)
+                able_to_predict_count[polarity_argmax] += 1
 
                 if polarity_matrix[index_sentence][0] == 1:
                     majority_count[0] += 1
                     with_backup_count[0] += 1
             elif True not in positive_polarities and True in negative_polarities:
+
+                concept_from_ontology[1] += 1
+                indices_able_to_predict.append(index_sentence)
+                able_to_predict_count[polarity_argmax] += 1
 
                 if polarity_matrix[index_sentence][2] == 1:
                     majority_count[2] += 1
@@ -69,17 +80,20 @@ class OntologyReasoner:
 
             elif True in positive_polarities and True in negative_polarities:
 
+                concept_from_ontology[2] += 1
                 indices_not_able_to_predict.append(index_sentence)
                 if polarity_matrix[index_sentence][0] == 1:
                     majority_count[0] += 1
 
             elif True not in positive_polarities and True not in negative_polarities:
 
+                concept_from_ontology[3] += 1
                 indices_not_able_to_predict.append(index_sentence)
                 if polarity_matrix[index_sentence][0] == 1:
                     majority_count[0] += 1
 
-        return majority_count, with_backup_count, polarity_count, indices_not_able_to_predict
+        return majority_count, with_backup_count, polarity_count, indices_not_able_to_predict, able_to_predict_count, \
+               concept_from_ontology, indices_able_to_predict
 
     def run(self):
 
@@ -98,7 +112,11 @@ class OntologyReasoner:
             training_indices, validation_indices = self.internal_data_loader.get_indices_cross_validation()
 
             results = {}
-            remaining_indices = []
+            val_remaining_indices = []
+            tr_remaining_indices = []
+
+            val_able_to_pred_indices = []
+            tr_able_to_pred_indices = []
 
             train_single_acc_majority = list(range(self.config.cross_validation_rounds))
             train_single_acc_with_backup = list(range(self.config.cross_validation_rounds))
@@ -116,8 +134,8 @@ class OntologyReasoner:
                 validation_aspects_dependencies_cross = train_aspects_relations[validation_indices[i]]
                 validation_negations_cross = train_negations[validation_indices[i]]
 
-                majority_count_training, with_backup_count_training, count_training, _ = \
-                    self.predict_sentiment_of_sentences(
+                majority_count_training, with_backup_count_training, count_training, wrong_tr_indices, \
+                tr_pol_able_to_pred, tr_able_to_pred, correct_tr_indices = self.predict_sentiment_of_sentences(
                         sentence_polarities=x_train_cross,
                         aspects_relations=train_aspects_dependencies_cross,
                         sentence_negations=train_negations_cross,
@@ -125,25 +143,28 @@ class OntologyReasoner:
                     )
 
                 accuracy_majority_training = majority_count_training / count_training
-                accuracy_with_back_training = with_backup_count_training / count_training
+                accuracy_with_back_training = with_backup_count_training / tr_pol_able_to_pred
 
-                majority_count_validation, with_backup_count_validation, count_validation, remaining_validation_indices = \
-                    self.predict_sentiment_of_sentences(
-                        sentence_polarities=x_validation_cross,
-                        aspects_relations=validation_aspects_dependencies_cross,
-                        sentence_negations=validation_negations_cross,
-                        polarity_matrix=y_validation_cross
-                    )
+                majority_count_validation, with_backup_count_validation, count_validation, wrong_val_indices,  \
+                val_pol_able_to_pred, val_able_to_pred, correct_val_indices = self.predict_sentiment_of_sentences(
+                    sentence_polarities=x_validation_cross,
+                    aspects_relations=validation_aspects_dependencies_cross,
+                    sentence_negations=validation_negations_cross,
+                    polarity_matrix=y_validation_cross
+                )
 
-                remaining_indices.append(remaining_validation_indices)
+                val_remaining_indices.append(wrong_val_indices)
+                tr_remaining_indices.append(wrong_tr_indices)
+                val_able_to_pred_indices.append(correct_val_indices)
+                tr_able_to_pred_indices.append(correct_tr_indices)
 
                 accuracy_majority_validation = majority_count_validation / count_validation
-                accuracy_with_back_validation = with_backup_count_validation / count_validation
+                accuracy_with_back_validation = with_backup_count_validation / val_pol_able_to_pred
 
                 train_single_acc_majority[i] = np.sum(majority_count_training) / np.sum(count_training)
-                train_single_acc_with_backup[i] = np.sum(with_backup_count_training) / np.sum(count_training)
+                train_single_acc_with_backup[i] = np.sum(with_backup_count_training) / np.sum(tr_pol_able_to_pred)
                 validation_single_acc_majority[i] = np.sum(majority_count_validation) / np.sum(count_validation)
-                validation_single_acc_with_backup[i] = np.sum(with_backup_count_validation) / np.sum(count_validation)
+                validation_single_acc_with_backup[i] = np.sum(with_backup_count_validation) / np.sum(val_pol_able_to_pred)
 
                 result = {
                     'classification model': self.config.name_of_model,
@@ -159,14 +180,22 @@ class OntologyReasoner:
                     'validation_acc_with_backup': accuracy_with_back_validation.tolist(),
                     'train_pred_y_majority': majority_count_training.tolist(),
                     'train_pred_y_with_backup': with_backup_count_training.tolist(),
+                    'train_polarities_able_to_predict': tr_pol_able_to_pred.tolist(),
+                    'train_able_to_predict': tr_able_to_pred.tolist(),
                     'validation_pred_y_majority': majority_count_validation.tolist(),
-                    'validation_pred_y_with_backup': with_backup_count_validation.tolist()
+                    'validation_pred_y_with_backup': with_backup_count_validation.tolist(),
+                    'validation_polarities_able_to_predict': val_pol_able_to_pred.tolist(),
+                    'validation_able_to_predict': val_able_to_pred.tolist()
                 }
 
                 results['cross_validation_round_' + str(i)] = result
 
             remaining_sentences = {
-                'cross_val_indices': remaining_indices
+                'tr_able_to_pred': tr_able_to_pred_indices,
+                'te_able_to_pred': val_able_to_pred_indices,
+                'tr_not_able_to_pred': tr_remaining_indices,
+                'te_not_able_to_pred': val_remaining_indices
+
             }
 
             with open(self.config.remaining_data_cross_val, 'w') as outfile:
@@ -186,34 +215,37 @@ class OntologyReasoner:
 
         else:
 
-            majority_count_training, with_backup_count_training, count_training, _ = \
-                self.predict_sentiment_of_sentences(
-                        sentence_polarities=x_train,
-                        aspects_relations=train_aspects_relations,
-                        sentence_negations=train_negations,
-                        polarity_matrix=y_train
-                    )
+            majority_count_training, with_backup_count_training, count_training, tr_not_able_to_pred_indices, \
+            tr_pol_able_to_pred, tr_able_to_pred, tr_able_to_pred_indices = self.predict_sentiment_of_sentences(
+                sentence_polarities=x_train,
+                aspects_relations=train_aspects_relations,
+                sentence_negations=train_negations,
+                polarity_matrix=y_train
+            )
 
             accuracy_majority_training = majority_count_training / count_training
-            accuracy_with_back_training = with_backup_count_training / count_training
+            accuracy_with_back_training = with_backup_count_training / tr_pol_able_to_pred
 
-            majority_count_test, with_backup_count_test, count_test, remaining_test_indices = \
-                self.predict_sentiment_of_sentences(
-                    sentence_polarities=x_test,
-                    aspects_relations=train_aspects_relations,
-                    sentence_negations=test_negations,
-                    polarity_matrix=y_test
-                )
+            majority_count_test, with_backup_count_test, count_test, te_not_able_to_pred_indices, te_pol_able_to_pred, \
+            te_able_to_pred, te_able_to_pred_indices = self.predict_sentiment_of_sentences(
+                sentence_polarities=x_test,
+                aspects_relations=test_aspects_relations,
+                sentence_negations=test_negations,
+                polarity_matrix=y_test
+            )
 
             remaining_sentences = {
-                'test_set_indices': remaining_test_indices
+                'tr_able_to_pred': tr_able_to_pred_indices,
+                'te_able_to_pred': te_able_to_pred_indices,
+                'tr_not_able_to_pred': tr_not_able_to_pred_indices,
+                'te_not_able_to_pred': te_not_able_to_pred_indices
             }
 
             with open(self.config.remaining_data, 'w') as outfile:
                 json.dump(remaining_sentences, outfile, ensure_ascii=False)
 
             accuracy_majority_test = majority_count_test / count_test
-            accuracy_with_back_test = with_backup_count_test / count_test
+            accuracy_with_back_test = with_backup_count_test / te_pol_able_to_pred
 
             results = {
                 'classification model': self.config.name_of_model,
@@ -229,8 +261,12 @@ class OntologyReasoner:
                 'test_acc_with_backup': accuracy_with_back_test.tolist(),
                 'train_pred_y_majority': majority_count_training.tolist(),
                 'train_pred_y_with_backup': with_backup_count_training.tolist(),
+                'train_polarities_able_to_predict': tr_pol_able_to_pred.tolist(),
+                'train_able_to_predict': tr_able_to_pred.tolist(),
                 'test_pred_y_majority': majority_count_test.tolist(),
-                'test_pred_y_with_backup': with_backup_count_test.tolist()
+                'test_pred_y_with_backup': with_backup_count_test.tolist(),
+                'test_polarities_able_to_predict': te_pol_able_to_pred.tolist(),
+                'test_able_to_predict': te_able_to_pred.tolist()
             }
 
             with open(self.config.file_of_results, 'w') as outfile:

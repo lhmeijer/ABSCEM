@@ -16,7 +16,9 @@ class InternalDataLoader:
         self.sentiment_distribution_training = []
         self.part_of_speech_training = []
         self.negation_in_training = []
-        self.word_mentions_training = []
+        self.word_sentiments_in_training = []
+        self.aspect_sentiments_in_training = []
+        self.mentions_in_training = []
         self.word_polarities_training = []
         self.word_relations_training = []
         self.aspects_training = []
@@ -31,7 +33,9 @@ class InternalDataLoader:
         self.sentiment_distribution_test = []
         self.part_of_speech_test = []
         self.negation_in_test = []
-        self.word_mentions_test = []
+        self.word_sentiments_in_test = []
+        self.aspect_sentiments_in_test = []
+        self.mentions_in_test = []
         self.word_polarities_test = []
         self.word_relations_test = []
         self.aspects_test = []
@@ -61,11 +65,13 @@ class InternalDataLoader:
                         for lemma in lemmatized_sentence:
                             self.word_list.append(lemma)
 
+                        self.mentions_in_training.append(sentence['word_mentions'])
                         self.sentence_id_in_training.append(sentence['sentence_id'])
                         self.word_embeddings_training_all.append(sentence['word_embeddings'])
                         self.sentiment_distribution_training.append(sentence['sentiment_distribution'])
                         self.negation_in_training.append(sentence['negation_in_sentence'])
-                        self.word_mentions_training.append(sentence['word_mentions'])
+                        self.word_sentiments_in_training.append(sentence['word_sentiments'][n_aspects])
+                        self.aspect_sentiments_in_training.append(sentence['aspect_sentiments'][n_aspects])
                         self.word_polarities_training.append(sentence['word_polarities'][n_aspects])
                         self.aspects_training.append(sentence['aspects'][n_aspects])
                         self.word_relations_training.append(sentence['aspect_relations'][n_aspects])
@@ -97,11 +103,13 @@ class InternalDataLoader:
                         for lemma in lemmatized_sentence:
                             self.word_list.append(lemma)
 
+                        self.mentions_in_test.append(sentence['word_mentions'])
                         self.sentence_id_in_test.append(sentence['sentence_id'])
                         self.word_embeddings_test_all.append(sentence['word_embeddings'])
                         self.sentiment_distribution_test.append(sentence['sentiment_distribution'])
                         self.negation_in_test.append(sentence['negation_in_sentence'])
-                        self.word_mentions_test.append(sentence['word_mentions'])
+                        self.word_sentiments_in_test.append(sentence['word_sentiments'][n_aspects])
+                        self.aspect_sentiments_in_test.append(sentence['aspect_sentiments'][n_aspects])
                         self.word_polarities_test.append(sentence['word_polarities'][n_aspects])
                         self.aspects_test.append(sentence['aspects'][n_aspects])
                         self.word_relations_test.append(sentence['aspect_relations'][n_aspects])
@@ -112,7 +120,8 @@ class InternalDataLoader:
 
     def setup_cross_val_indices(self, size):
 
-        if not os.path.isfile(self.config.cross_validation_indices_training) and not os.path.isfile(self.config.cross_validation_indices_validation):
+        if not os.path.isfile(self.config.cross_validation_indices_training) \
+                and not os.path.isfile(self.config.cross_validation_indices_validation):
 
             np.random.seed(self.config.seed)
             number_training_data = np.int(self.config.cross_validation_percentage * size)

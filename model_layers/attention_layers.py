@@ -24,7 +24,9 @@ def attention_function(inputs, attend, length, n_hidden, max_len, l2_reg, random
     :param layer_id:
     :return:
     """
+
     batch_size = tf.shape(inputs)[0]
+    max_length = tf.shape(inputs)[1]
     w = tf.get_variable(
         name='att_w_' + str(layer_id),
         shape=[n_hidden, n_hidden],
@@ -38,11 +40,11 @@ def attention_function(inputs, attend, length, n_hidden, max_len, l2_reg, random
         regularizer=tf.contrib.layers.l2_regularizer(l2_reg)
     )
     inputs = tf.reshape(inputs, [-1, n_hidden])
-    tmp = tf.reshape(tf.matmul(inputs, w), [-1, max_len, n_hidden])
+    tmp = tf.reshape(tf.matmul(inputs, w), [-1, max_length, n_hidden])
     attend = tf.expand_dims(attend, 2)
-    tmp = tf.reshape(tf.matmul(tmp, attend), [batch_size, 1, max_len])
+    tmp = tf.reshape(tf.matmul(tmp, attend), [batch_size, 1, max_length])
     tmp = tf.tanh(tmp + b)
-    return softmax_with_len(tmp, length, max_len)
+    return softmax_with_len(tmp, length, max_length)
 
 
 def cam_mlp_attention_layer(inputs, length, n_hidden, l2_reg, random_base, layer_id=1):

@@ -20,8 +20,8 @@ class Config:
     internal_train_data = "data/internal_data/restaurant_train_" + str(year) + ".json"
     internal_test_data = "data/internal_data/restaurant_test_" + str(year) + ".json"
 
-    remaining_data = "data/internal_data/remaining_indices_ontology_" + str(year) + ".json"
-    remaining_data_cross_val = "data/internal_data/remaining_indices_ontology_cross_val_" + str(year) + ".json"
+    remaining_data = "data/indices/remaining_indices_ontology_" + str(year) + ".json"
+    remaining_data_cross_val = "data/indices/remaining_indices_ontology_cross_val_" + str(year) + ".json"
 
     cross_validation_indices_training = "data/internal_data/cross_val_" + str(cross_validation_rounds) + \
                                         "_training_indices_" + str(year) + ".json"
@@ -29,12 +29,17 @@ class Config:
                                           "_validation_indices_" + str(year) + ".json"
 
     glove_embeddings = "data/external_data/glove.42B." + str(embedding_dimension) + "d.txt"
+    embeddings_file = "data/internal_data/" + str(embedding_dimension) + "embedding" + str(year) + ".txt"
+
+    @staticmethod
+    def get_explanation_file(name_of_nlm, sentence_id):
+        return "results/sentence_explanations/" + str(Config.year) + "/" + name_of_nlm + \
+               sentence_id + ".json"
 
 
 class OntologyConfig(Config):
 
     name_of_model = "ontology_reasoner"
-    cross_validation_rounds = 10
     file_of_results = "results/abs_classifiers/" + str(Config.year) + "/" + name_of_model + ".json"
     file_of_cross_val_results = "results/abs_classifiers/" + str(Config.year) + "/cross_val_" + name_of_model + ".json"
 
@@ -42,7 +47,6 @@ class OntologyConfig(Config):
 class SVMConfig(Config):
 
     name_of_model = "svm_model"
-    cross_validation_rounds = 10
     file_of_results = "results/abs_classifiers/" + str(Config.year) + "/" + name_of_model + ".json"
     file_of_cross_val_results = "results/abs_classifiers/" + str(Config.year) + "/cross_val_" + name_of_model + "json"
 
@@ -53,8 +57,8 @@ class NeuralLanguageModelConfig(Config):
 
     @staticmethod
     def loss_function(y, prob):
-        regularization_loss = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
-        loss = - tf.reduce_mean(y * tf.log(prob + 1e-40)) + tf.reduce_sum(regularization_loss)
+        reg_loss = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
+        loss = - tf.reduce_mean(y * tf.log(prob)) + sum(reg_loss)
         return loss
 
     @staticmethod
@@ -71,7 +75,7 @@ class CabascConfig(NeuralLanguageModelConfig):
     batch_size = 20
     number_hidden_units = 300
     l2_regularization = 0.00001
-    number_of_iterations = 50
+    number_of_iterations = 5
     max_sentence_length = 10
     max_target_length = 10
     number_of_classes = 3
@@ -92,7 +96,7 @@ class LCR_RotConfig(NeuralLanguageModelConfig):
     batch_size = 20
     number_hidden_units = 300
     l2_regularization = 0.00001
-    number_of_iterations = 50
+    number_of_iterations = 200
     max_sentence_length = 80
     max_target_length = 19
     number_of_classes = 3
@@ -104,10 +108,15 @@ class LCR_RotConfig(NeuralLanguageModelConfig):
 
     file_of_results = "results/abs_classifiers/" + str(Config.year) + "/" + name_of_model + ".json"
     file_of_cross_val_results = "results/abs_classifiers/" + str(Config.year) + "/cross_val_" + name_of_model + "json"
-    file_to_save_model = "abs_classifiers/model_savings/" + str(Config.year) + "/lcr_rot_model/tf.model"
+    file_to_save_model = "abs_classifiers/model_savings/" + str(Config.year) + "/lcr_rot_model/tf_model.ckpt-1000"
 
     tr_file_of_hidden_layers = "data/hidden_layers/" + str(Config.year) + "/training_" + name_of_model + ".json"
     te_file_of_hidden_layers = "data/hidden_layers/" + str(Config.year) + "/test_" + name_of_model + ".json"
+
+    file_of_indices = "data/indices/prediction_indices_" + name_of_model + "_" + str(Config.year) + ".json"
+    file_hybrid_results = "results/abs_classifiers/" + str(Config.year) + "/hybrid/" + name_of_model + "_results.json"
+    file_hybrid_lengths = "results/abs_classifiers/" + str(Config.year) + "/hybrid/" + name_of_model + "_lengths.json"
+    file_hybrid_ids = "results/abs_classifiers/" + str(Config.year) + "/hybrid/" + name_of_model + "_ids.json"
 
 
 class LCR_RotInverseConfig(LCR_RotConfig):
@@ -116,53 +125,97 @@ class LCR_RotInverseConfig(LCR_RotConfig):
 
     file_of_results = "results/abs_classifiers/" + str(Config.year) + "/" + name_of_model + ".json"
     file_of_cross_val_results = "results/abs_classifiers/" + str(Config.year) + "/cross_val_" + name_of_model + "json"
-    file_to_save_model = "abs_classifiers/model_savings/" + str(Config.year) + "/lcr_rot_inverse_model/tf.model"
+    file_to_save_model = "abs_classifiers/model_savings/" + str(Config.year) + "/lcr_rot_inverse_model/tf_model.ckpt-20"
     tr_file_of_hidden_layers = "data/hidden_layers/" + str(Config.year) + "/training_" + name_of_model + ".json"
     te_file_of_hidden_layers = "data/hidden_layers/" + str(Config.year) + "/test_" + name_of_model + ".json"
 
+    file_of_indices = "data/indices/prediction_indices_" + name_of_model + "_" + str(Config.year) + ".json"
+    file_hybrid_results = "results/abs_classifiers/" + str(Config.year) + "/hybrid/" + name_of_model + "_results.json"
+    file_hybrid_lengths = "results/abs_classifiers/" + str(Config.year) + "/hybrid/" + name_of_model + "_lengths.json"
 
 class LCR_RotHopConfig(LCR_RotConfig):
 
     name_of_model = "LCR_Rot_hop_model"
+    learning_rate = 0.09
+    momentum = 0.9
+    number_of_iterations = 200
 
-    n_iterations_hop = 3
+    n_iterations_hop = 5
 
     file_of_results = "results/abs_classifiers/" + str(Config.year) + "/" + name_of_model + ".json"
     file_of_cross_val_results = "results/abs_classifiers/" + str(Config.year) + "/cross_val_" + name_of_model + "json"
-    file_to_save_model = "abs_classifiers/model_savings/" + str(Config.year) + "/lcr_rot_hop_model/tf.model"
-    tr_file_of_hidden_layers = "data/hidden_layers/" + str(Config.year) + "/training_" + name_of_model + ".json"
-    te_file_of_hidden_layers = "data/hidden_layers/" + str(Config.year) + "/test_" + name_of_model + ".json"
+    file_to_save_model = "abs_classifiers/model_savings/" + str(Config.year) + "/lcr_rot_hop_model/tf_model.ckpt-30"
+
+    file_of_indices = "data/indices/prediction_indices_" + name_of_model + "_" + str(Config.year) + ".json"
+    file_hybrid_results = "results/abs_classifiers/" + str(Config.year) + "/hybrid/" + name_of_model + "_results.json"
+    file_hybrid_lengths = "results/abs_classifiers/" + str(Config.year) + "/hybrid/" + name_of_model + "_lengths.json"
+    file_hybrid_ids = "results/abs_classifiers/" + str(Config.year) + "/hybrid/" + name_of_model + "_ids.json"
+
+    tr_file_of_hid_corr_pred = "data/hidden_layers/" + str(Config.year) + "/" + name_of_model + "/tr_corr_pred.json"
+    tr_file_of_hid_wrong_pred = "data/hidden_layers/" + str(Config.year) + "/" + name_of_model + "/tr_wrong_pred.json"
+    tr_file_of_hid_atp_corr_pred = "data/hidden_layers/" + str(Config.year) + "/" + name_of_model + \
+                                   "/tr_atp_corr_pred.json"
+    tr_file_of_hid_atp_wrong_pred = "data/hidden_layers/" + str(Config.year) + "/" + name_of_model + \
+                                    "/tr_atp_wrong_pred.json"
+    tr_file_of_hid_natp_corr_pred = "data/hidden_layers/" + str(Config.year) + "/" + name_of_model + \
+                                    "/tr_natp_corr_pred.json"
+    tr_file_of_hid_natp_wrong_pred = "data/hidden_layers/" + str(Config.year) + "/" + name_of_model + \
+                                     "/tr_natp_wrong_pred.json"
+
+    te_file_of_hid_corr_pred = "data/hidden_layers/" + str(Config.year) + "/" + name_of_model + "/te_corr_pred.json"
+    te_file_of_hid_wrong_pred = "data/hidden_layers/" + str(Config.year) + "/" + name_of_model + "/te_wrong_pred.json"
+    te_file_of_hid_atp_corr_pred = "data/hidden_layers/" + str(Config.year) + "/" + name_of_model + \
+                                   "/te_atp_corr_pred.json"
+    te_file_of_hid_atp_wrong_pred = "data/hidden_layers/" + str(Config.year) + "/" + name_of_model + \
+                                    "/te_atp_wrong_pred.json"
+    te_file_of_hid_natp_corr_pred = "data/hidden_layers/" + str(Config.year) + "/" + name_of_model + \
+                                    "/te_natp_corr_pred.json"
+    te_file_of_hid_natp_wrong_pred = "data/hidden_layers/" + str(Config.year) + "/" + name_of_model + \
+                                     "/te_natp_wrong_pred.json"
 
 
 class DiagnosticClassifierPOSConfig(Config):
 
     name_of_model = "diagnostic classifier for part of speech tagging"
-    classifier = SingleMLPClassifier(
+    classifier_embeddings = SingleMLPClassifier(
         learning_rate=0.001,
-        number_hidden_units=300,
+        number_hidden_units=500,
         number_of_epochs=100,
         keep_prob=0.8,
         batch_size=20,
         random_base=0.1,
         number_of_classes=5,
-        dimension=300
+        dimension=300,
+        model_name='pos_tags_em'
+    )
+
+    classifier_states = SingleMLPClassifier(
+        learning_rate=0.001,
+        number_hidden_units=500,
+        number_of_epochs=100,
+        keep_prob=0.8,
+        batch_size=20,
+        random_base=0.1,
+        number_of_classes=5,
+        dimension=600,
+        model_name='pos_tags_st'
     )
 
     @staticmethod
     def get_file_of_model_savings(name_of_nlm, name_of_hidden_state):
-        return "diagnostic_classifier/model_savings/" + str(Config.year) + "/pos_tags/" + name_of_nlm + "_" + \
-               name_of_hidden_state + "tf.model"
+        return "diagnostic_classifier/model_savings/" + str(Config.year) + "/pos_tags/" + name_of_nlm + "/" + \
+               name_of_hidden_state + "tf_model.ckpt-40"
 
     @staticmethod
-    def get_file_of_results(name_of_nlm):
+    def get_file_of_results(name_of_nlm, name_of_result):
         return "results/diagnostic_classifiers/" + str(Config.year) + "/" + name_of_nlm + \
-               "_part_of_speech_tagging.json"
+               "/pos_tags/" + name_of_result + ".json"
 
 
-class DiagnosticClassifierPolarityConfig(Config):
+class DiagnosticClassifierAspectSentimentConfig(Config):
 
-    name_of_model = "diagnostic classifier for polarities towards the aspects"
-    classifier = SingleMLPClassifier(
+    name_of_model = "diagnostic classifier for sentiments towards the aspects"
+    classifier_embeddings = SingleMLPClassifier(
         learning_rate=0.001,
         number_hidden_units=500,
         number_of_epochs=100,
@@ -170,68 +223,145 @@ class DiagnosticClassifierPolarityConfig(Config):
         batch_size=20,
         random_base=0.1,
         number_of_classes=3,
-        dimension=300
+        dimension=300,
+        model_name='aspect_sentiments_em'
+    )
+
+    classifier_states = SingleMLPClassifier(
+        learning_rate=0.001,
+        number_hidden_units=500,
+        number_of_epochs=100,
+        keep_prob=0.8,
+        batch_size=20,
+        random_base=0.1,
+        number_of_classes=3,
+        dimension=600,
+        model_name='aspect_sentiments_st'
     )
 
     @staticmethod
     def get_file_of_model_savings(name_of_nlm, name_of_hidden_state):
-        return "diagnostic_classifier/model_savings/" + str(Config.year) + "/polarities/" + name_of_nlm + "_" + \
-               name_of_hidden_state + "tf.model"
+        return "diagnostic_classifier/model_savings/" + str(Config.year) + "/aspect_sentiments/" + name_of_nlm + "/" + \
+               name_of_hidden_state + "tf_model.ckpt-50"
 
     @staticmethod
-    def get_file_of_results(name_of_nlm):
+    def get_file_of_results(name_of_nlm, name_of_result):
         return "results/diagnostic_classifiers/" + str(Config.year) + "/" + name_of_nlm + \
-               "_polarity_towards_aspect.json"
+               "/aspect_sentiments/" + name_of_result + ".json"
 
 
 class DiagnosticClassifierRelationConfig(Config):
 
     name_of_model = "diagnostic classifier for relations towards the aspects"
-    classifier = SingleMLPClassifier(
+    classifier_embeddings = SingleMLPClassifier(
         learning_rate=0.001,
-        number_hidden_units=300,
+        number_hidden_units=500,
         number_of_epochs=100,
         keep_prob=0.8,
         batch_size=20,
         random_base=0.1,
         number_of_classes=2,
-        dimension=300
+        dimension=300,
+        model_name='relations_em'
+    )
+
+    classifier_states= SingleMLPClassifier(
+        learning_rate=0.001,
+        number_hidden_units=500,
+        number_of_epochs=100,
+        keep_prob=0.8,
+        batch_size=20,
+        random_base=0.1,
+        number_of_classes=2,
+        dimension=600,
+        model_name='relations_st'
     )
 
     @staticmethod
     def get_file_of_model_savings(name_of_nlm, name_of_hidden_state):
-        return "diagnostic_classifier/model_savings/" + str(Config.year) + "/relations/" + name_of_nlm + "_" + \
-               name_of_hidden_state + "tf.model"
+        return "diagnostic_classifier/model_savings/" + str(Config.year) + "/relations/" + name_of_nlm + "/" + \
+               name_of_hidden_state + "tf_model.ckpt-60"
 
     @staticmethod
-    def get_file_of_results(name_of_nlm):
+    def get_file_of_results(name_of_nlm, name_of_result):
         return "results/diagnostic_classifiers/" + str(Config.year) + "/" + name_of_nlm + \
-               "_relation_towards_aspect.json"
+               "/relations/" + name_of_result + ".json"
+
+
+class DiagnosticClassifierWordSentimentConfig(Config):
+
+    name_of_model = "diagnostic classifier for word sentiments"
+    classifier_embeddings = SingleMLPClassifier(
+        learning_rate=0.001,
+        number_hidden_units=500,
+        number_of_epochs=100,
+        keep_prob=0.8,
+        batch_size=20,
+        random_base=0.1,
+        number_of_classes=3,
+        dimension=300,
+        model_name='word_sentiments_em'
+    )
+
+    classifier_states= SingleMLPClassifier(
+        learning_rate=0.001,
+        number_hidden_units=500,
+        number_of_epochs=100,
+        keep_prob=0.8,
+        batch_size=20,
+        random_base=0.1,
+        number_of_classes=3,
+        dimension=600,
+        model_name='word_sentiments_st'
+    )
+
+    @staticmethod
+    def get_file_of_model_savings(name_of_nlm, name_of_hidden_state):
+        return "diagnostic_classifier/model_savings/" + str(Config.year) + "/word_sentiments/" + name_of_nlm + "/" + \
+               name_of_hidden_state + "tf_model.ckpt-70"
+
+    @staticmethod
+    def get_file_of_results(name_of_nlm, name_of_result):
+        return "results/diagnostic_classifiers/" + str(Config.year) + "/" + name_of_nlm + \
+                "/word_sentiments/" + name_of_result + ".json"
 
 
 class DiagnosticClassifierMentionConfig(Config):
 
     name_of_model = "diagnostic classifier for ontology mentions"
-    classifier = SingleMLPClassifier(
+    classifier_embeddings = SingleMLPClassifier(
         learning_rate=0.001,
-        number_hidden_units=300,
+        number_hidden_units=500,
         number_of_epochs=100,
         keep_prob=0.8,
         batch_size=20,
         random_base=0.1,
-        number_of_classes=14,
-        dimension=300
+        number_of_classes=9,
+        dimension=300,
+        model_name='mentions_em'
+    )
+
+    classifier_states= SingleMLPClassifier(
+        learning_rate=0.001,
+        number_hidden_units=500,
+        number_of_epochs=100,
+        keep_prob=0.8,
+        batch_size=20,
+        random_base=0.1,
+        number_of_classes=9,
+        dimension=600,
+        model_name='mentions_st'
     )
 
     @staticmethod
     def get_file_of_model_savings(name_of_nlm, name_of_hidden_state):
-        return "diagnostic_classifier/model_savings/" + str(Config.year) + "/mentions/" + name_of_nlm + "_" + \
-               name_of_hidden_state + "tf.model"
+        return "diagnostic_classifier/model_savings/" + str(Config.year) + "/mentions/" + name_of_nlm + "/" + \
+               name_of_hidden_state + "tf_model.ckpt-80"
 
     @staticmethod
-    def get_file_of_results(name_of_nlm):
+    def get_file_of_results(name_of_nlm, name_of_result):
         return "results/diagnostic_classifiers/" + str(Config.year) + "/" + name_of_nlm + \
-                "_ontology_mention.json"
+                "/mentions/" + name_of_result + ".json"
 
 
 class LocalInterpretableConfig(Config):
@@ -241,7 +371,9 @@ class LocalInterpretableConfig(Config):
 
     # algorithm to calculate the neighbours of an instance
     locality_model_name = "perturbing"
-    locality_model = Perturbing(512)
+    locality_model = Perturbing(1024)
+    # locality_model = Perturbing(10)
+
 
     # rule based classifier, 3 is the number of subsets
     max_tree_depth = 4

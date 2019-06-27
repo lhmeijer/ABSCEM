@@ -3,7 +3,7 @@ import tensorflow as tf
 
 def dynamic_rnn(cell, inputs, n_hidden, length, max_len, scope_name):
 
-    outputs, state = tf.nn.dynamic_rnn(
+    outputs, _ = tf.nn.dynamic_rnn(
         cell(n_hidden),
         inputs=inputs,
         sequence_length=length,
@@ -18,7 +18,7 @@ def dynamic_rnn(cell, inputs, n_hidden, length, max_len, scope_name):
 
 def bi_dynamic_rnn(cell, inputs, n_hidden, length, scope_name):
 
-    outputs, state = tf.nn.bidirectional_dynamic_rnn(
+    outputs, _ = tf.nn.bidirectional_dynamic_rnn(
         cell_fw=cell(n_hidden),
         cell_bw=cell(n_hidden),
         inputs=inputs,

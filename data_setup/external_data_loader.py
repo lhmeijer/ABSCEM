@@ -7,7 +7,7 @@ from data_setup.ontology_tagging import OntologyTagging
 from autocorrect import spell
 import json
 from nltk.parse import CoreNLPParser
-from nltk.corpus import wordnet
+from nltk.corpus import wordnet, sentiwordnet
 from nltk.parse.corenlp import CoreNLPDependencyParser
 
 
@@ -33,7 +33,6 @@ class ExternalDataLoader:
         self.food_prices = 0
         self.food_quality = 0
         self.food_category = 0
-        self.location_general = 0
         self.location_general = 0
         self.restaurant_general = 0
         self.restaurant_miscellaneous = 0
@@ -90,21 +89,24 @@ class ExternalDataLoader:
 
             if len(aspects) != 0:
 
+                print("opinion_counter ", opinion_counter)
+
                 sentiment_distribution = self.annotate(original_sentence, properties={"annotators": "sentiment",
                                                                                       "outputFormat": "json", })
 
                 processed_sentence = self.process_characters(tokenized_sentence)
 
-                lemmatized_sentence, part_of_speech_sentence, aspect_dependencies, sentence_negation = \
+                lemmatized_sentence, part_of_speech_sentence, aspect_dependencies, sentence_negation, sentiments = \
                     self.lemmatize_and_pos_tagging(processed_sentence, aspect_indices)
 
                 ontology_classes_sentence = self.ontology_tagging.ontology_classes_tagging(lemmatized_sentence)
 
-                word_mention_sentence = self.ontology_tagging.mention_tagging(ontology_classes_sentence)
+                mentions = self.ontology_tagging.mention_tagging(ontology_classes_sentence)
 
-                word_polarity_sentence, aspect_relation_sentence = self.ontology_tagging.\
-                    polarity_and_aspect_relation_tagging(ontology_classes_sentence, aspect_indices, categories,
-                                                         aspect_dependencies)
+                ont_sentiments_sentence, aspect_sentiments_sentence, sentiments_sentence, relations_sentence = \
+                    self.ontology_tagging.polarity_and_aspect_relation_tagging(ontology_classes_sentence,
+                                                                               aspect_indices, categories,
+                                                                               aspect_dependencies, sentiments)
 
                 word_embedding_sentence = self.compute_word_embeddings(lemmatized_sentence)
 
@@ -115,9 +117,11 @@ class ExternalDataLoader:
                     'sentiment_distribution': sentiment_distribution,
                     'part_of_speech_tags': part_of_speech_sentence,
                     'negation_in_sentence': sentence_negation,
-                    'word_polarities': word_polarity_sentence,
-                    'word_mentions': word_mention_sentence,
-                    'aspect_relations': aspect_relation_sentence,
+                    'word_polarities': ont_sentiments_sentence,
+                    'aspect_sentiments': aspect_sentiments_sentence,
+                    'word_sentiments': sentiments_sentence,
+                    'word_mentions': mentions,
+                    'aspect_relations': relations_sentence,
                     'aspects': aspects,
                     'aspect_indices': aspect_indices,
                     'polarities': polarities,
@@ -127,11 +131,6 @@ class ExternalDataLoader:
                     'word_embeddings': word_embedding_sentence
                 }
                 all_sentences.append(dict_sentence)
-
-        print("Number of data points in the sample ", opinion_counter)
-        print("Number of positive data points ", self.positive_counter)
-        print("Number of neutral data points ", self.neutral_counter)
-        print("Number of negative data points ", self.negative_counter)
 
         with open(write_internal_file_name, 'w') as outfile:
             json.dump(all_sentences, outfile, ensure_ascii=False)
@@ -277,6 +276,7 @@ class ExternalDataLoader:
         wordnet_lemmatizer = nltk.WordNetLemmatizer()
         part_of_speech_sentence = list(range(len(sentence)))
         lemmatized_sentence = list(range(len(sentence)))
+        sentiments = list(range(len(sentence)))
         aspects_dependencies = [['no'] * len(sentence) for i in range(len(aspect_indices))]
 
         backup_sentence = sentence.copy()
@@ -334,30 +334,86 @@ class ExternalDataLoader:
                     part_of_speech_sentence[word_indices[i]] = [1, 0, 0, 0, 0]
                     word = spell(words[i])
                     lemma = wordnet_lemmatizer.lemmatize(word, wordnet.VERB)
-                    lemmatized_sentence[word_indices[i]] = lemma
+                    sentiments[word_indices[i]] = self.get_sentiment_of_word(word, lemma, wordnet.VERB)
+                    lemmatized_sentence[word_indices[i]] = lemma.lower()
                 elif part_of_speech[i].startswith('J'):      # Adjective
                     part_of_speech_sentence[word_indices[i]] = [0, 1, 0, 0, 0]
                     word = spell(words[i])
                     lemma = wordnet_lemmatizer.lemmatize(word, wordnet.ADJ)
-                    lemmatized_sentence[word_indices[i]] = lemma
+                    sentiments[word_indices[i]] = self.get_sentiment_of_word(word, lemma, wordnet.ADJ)
+                    lemmatized_sentence[word_indices[i]] = lemma.lower()
                 elif part_of_speech[i].startswith('R'):      # Adverb
                     part_of_speech_sentence[word_indices[i]] = [0, 0, 1, 0, 0]
                     word = spell(words[i])
                     lemma = wordnet_lemmatizer.lemmatize(word, wordnet.ADV)
-                    lemmatized_sentence[word_indices[i]] = lemma
+                    sentiments[word_indices[i]] = self.get_sentiment_of_word(word, lemma, wordnet.ADV)
+                    lemmatized_sentence[word_indices[i]] = lemma.lower()
                 elif part_of_speech[i].startswith('N'):      # Noun
                     part_of_speech_sentence[word_indices[i]] = [0, 0, 0, 1, 0]
                     word = spell(words[i])
                     lemma = wordnet_lemmatizer.lemmatize(word, wordnet.NOUN)
-                    lemmatized_sentence[word_indices[i]] = lemma
+                    sentiments[word_indices[i]] = self.get_sentiment_of_word(word, lemma, wordnet.NOUN)
+                    lemmatized_sentence[word_indices[i]] = lemma.lower()
                 else:                                       # Otherwise
                     part_of_speech_sentence[word_indices[i]] = [0, 0, 0, 0, 1]
                     if words[i] not in punctuations:
                         words[i] = spell(words[i])
                     lemma = wordnet_lemmatizer.lemmatize(words[i])
-                    lemmatized_sentence[word_indices[i]] = lemma
+                    sentiments[word_indices[i]] = [0, 0, 1]
+                    lemmatized_sentence[word_indices[i]] = lemma.lower()
 
-        return lemmatized_sentence, part_of_speech_sentence, aspects_dependencies, sentence_negations
+        return lemmatized_sentence, part_of_speech_sentence, aspects_dependencies, sentence_negations, sentiments
+
+    @staticmethod
+    def get_sentiment_of_word(word, lemma, pos):
+
+        synsets = wordnet.synsets(word, pos=pos)
+
+        if len(synsets) != 0:
+
+            memorized_synset_01 = None
+            check_boolean_01 = False
+
+            memorized_synset_rest = None
+            check_boolean_rest = False
+
+            list_of_numbers = ['04', '02', '03', '05', '06', '07', '08', '09', '10', '11', '12']
+
+            for synset in synsets:
+                synset_split = synset.name().split(".")
+                if synset_split[0] == lemma:
+                    swn_synset = sentiwordnet.senti_synset(synset.name())
+                    pos_score = swn_synset.pos_score()
+                    neg_score = swn_synset.neg_score()
+
+                    if pos_score > neg_score:
+                        return [1, 0, 0]
+                    elif neg_score > pos_score:
+                        return [0, 1, 0]
+                    else:
+                        return [0, 0, 1]
+                if synset_split[2] == '01' and not check_boolean_01:
+                    memorized_synset_01 = synset
+                    check_boolean_01 = True
+                elif synset_split[2] in list_of_numbers and not check_boolean_rest:
+                    memorized_synset_rest = synset
+                    check_boolean_rest = True
+            if check_boolean_01:
+                synset = memorized_synset_01
+            else:
+                synset = memorized_synset_rest
+
+            swn_synset = sentiwordnet.senti_synset(synset.name())
+            pos_score = swn_synset.pos_score()
+            neg_score = swn_synset.neg_score()
+
+            if pos_score > neg_score:
+                return [1, 0, 0]
+            elif neg_score > pos_score:
+                return [0, 1, 0]
+            else:
+                return [0, 0, 1]
+        return [0, 0, 1]
 
     def annotate(self, text, properties=None):
         assert isinstance(text, str)

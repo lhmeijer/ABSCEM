@@ -55,7 +55,7 @@ class LCRRotHopModel(NeuralLanguageModel):
             # attention left
             att_l = attention_function(left_hidden_state, target_left_context_representation, left_sentence_lengths,
                                        2 * self.config.number_hidden_units, self.config.max_sentence_length,
-                                       self.config.l2_regularization, self.config.random_base, 'att_l' + _id + str(i))
+                                       self.config.l2_regularization, self.config.random_base, 'att_l_' + str(i) + _id)
             layer_information['left_attention_score_' + str(i)] = att_l
             weighted_left_hidden_state = tf.math.multiply(tf.transpose(att_l, perm=[0, 2, 1]), left_hidden_state)
             layer_information['weighted_left_hidden_state_' + str(i)] = weighted_left_hidden_state
@@ -64,7 +64,7 @@ class LCRRotHopModel(NeuralLanguageModel):
             # attention right
             att_r = attention_function(right_hidden_state, target_right_context_representation, right_sentence_lengths,
                                        2 * self.config.number_hidden_units, self.config.max_sentence_length,
-                                       self.config.l2_regularization, self.config.random_base, 'att_r' + _id + str(i))
+                                       self.config.l2_regularization, self.config.random_base, 'att_r_' + str(i) + _id)
             layer_information['right_attention_score_' + str(i)] = att_r
             weighted_right_hidden_state = tf.math.multiply(tf.transpose(att_r, perm=[0, 2, 1]), right_hidden_state)
             layer_information['weighted_right_hidden_state_'+str(i)] = weighted_right_hidden_state
@@ -74,7 +74,7 @@ class LCRRotHopModel(NeuralLanguageModel):
             att_t_l = attention_function(target_hidden_state, left_context_representation, target_lengths,
                                          2 * self.config.number_hidden_units, self.config.max_target_length,
                                          self.config.l2_regularization, self.config.random_base,
-                                         'att_t_l' + _id + str(i))
+                                         'att_t_l_' + str(i) + _id)
             layer_information['target_left_attention_score_' + str(i)] = att_t_l
             weighted_target_left_hidden_state = tf.math.multiply(tf.transpose(att_t_l, perm=[0, 2, 1]),
                                                                  target_hidden_state)
@@ -85,7 +85,7 @@ class LCRRotHopModel(NeuralLanguageModel):
             att_t_r = attention_function(target_hidden_state, right_context_representation, target_lengths,
                                          2 * self.config.number_hidden_units, self.config.max_target_length,
                                          self.config.l2_regularization, self.config.random_base,
-                                         'att_t_r' + _id + str(i))
+                                         'att_t_r_' + str(i) + _id)
             layer_information['target_right_attention_score_' + str(i)] = att_t_r
             weighted_target_right_hidden_state = tf.math.multiply(tf.transpose(att_t_r, perm=[0, 2, 1]),
                                                                   target_hidden_state)
@@ -96,6 +96,6 @@ class LCRRotHopModel(NeuralLanguageModel):
                                              target_right_context_representation, right_context_representation], 1)
 
         prob = softmax_layer(sentence_representation, 8 * self.config.number_hidden_units, self.config.random_base,
-                             self.config.keep_prob2, self.config.l2_regularization, self.config.number_of_classes)
+                             keep_prob2, self.config.l2_regularization, self.config.number_of_classes)
 
         return prob, layer_information

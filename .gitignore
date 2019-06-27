@@ -11,8 +11,8 @@ data/external_data/
 # internal_data
 data/internal_data/
 
-# model_savings
-data/model_savings/
+# indices
+data/indices/
 
 # hidden_layers
 data/hidden_layers/
@@ -26,6 +26,9 @@ results/diagnostic_classifiers/
 # results/local_interpretable_models
 results/local_interpretable_models/
 
+# results/sentence_explanations
+results/sentence_explanations/
+
 # diagnostic_classifier/model_savings
 diagnostic_classifier/model_savings/
 
@@ -36,3 +39,6 @@ abs_classifiers/model_savings/
 __pycache__/
 *.py[cod]
 *$py.class
+
+# klad_file.py
+klad_file.py

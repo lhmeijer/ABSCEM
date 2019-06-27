@@ -10,8 +10,11 @@ from abs_classifiers.lcr_rot_hop import LCRRotHopModel
 from abs_classifiers.svm import SVM
 from diagnostic_classifier.diagnostic_classifier import DiagnosticClassifier
 from local_interpretable_model.local_interpretable_model import LocalInterpretableModel
+from explanation.sentence_explanation import SentenceExplaining
 from local_interpretable_model.plots_set_up import SingleSentencePlot
-import os
+from explanation.prediction_explanations import get_indices_of_correct_wrong_predictions
+from local_interpretable_model.plots_set_up import PolaritySentencePlot
+import os, json
 
 
 def main():
@@ -41,26 +44,36 @@ def main():
     # remaining data file. Therefore after running ontology reasoner once, you do not need to run it again
     Config.hybrid_method = False
 
-    # Do you want to run cross-validation rounds, please specify the cross_validation_round settings in config.py
+    # Do you want to run cross-validation rounds for abs classifiers,
+    # please specify the cross_validation_round settings in config.py
     Config.cross_validation = False
 
     # Which Diagnostic Classifier, do you want to switch on or off, you can choose more than one
     # Please specify in config.py the specification per classifier
-    diagnostic_classifier_for_ontology_mention = False
+    diagnostic_classifier_for_word_sentiments = False
+    diagnostic_classifiers_for_ontology_mentions = False
     diagnostic_classifier_for_part_of_speech_tagging = False
     diagnostic_classifier_for_aspect_relations = False
-    diagnostic_classifier_for_aspect_polarities = False
+    diagnostic_classifier_for_aspect_sentiments = False
 
     diagnostic_classifiers = {
-        'mentions': diagnostic_classifier_for_ontology_mention,
-        'polarities': diagnostic_classifier_for_aspect_polarities,
+        'word_sentiments': diagnostic_classifier_for_word_sentiments,
+        'aspect_sentiments': diagnostic_classifier_for_aspect_sentiments,
         'relations': diagnostic_classifier_for_aspect_relations,
-        'part_of_speech': diagnostic_classifier_for_part_of_speech_tagging
+        'pos_tags': diagnostic_classifier_for_part_of_speech_tagging,
+        'mentions': diagnostic_classifiers_for_ontology_mentions
     }
 
     # Local Interpretable model, do you want it on or off, please set up the configuration in config.py
-    local_interpretable_model = False
+    local_interpretable_model = True
+    visualize_single_sentence_word_relevance = False
+    sentence_id = '507937:2'
+    visualize_sentiment_word_relevance = False
+    sentiment = "negative"
     n_of_relevance_words = 10
+
+    full_explanation_model = False
+    sentence_id = '507937:2'
 
     if ontology:
         # Running the ontology reasoner. Cannot use an explanation model for the ontology reasoner
@@ -111,6 +124,12 @@ def main():
                                                       lcr_rot_model.config.name_of_model)
             single_sentence_plot.plot(n_of_relevance_words)
 
+        if full_explanation_model:
+            diagnostic_classifier = DiagnosticClassifier(lcr_rot_model, diagnostic_classifiers)
+            local_interpretable_model = LocalInterpretableModel(LocalInterpretableConfig, lcr_rot_model)
+            sentence_explanation = SentenceExplaining(lcr_rot_model, diagnostic_classifier, local_interpretable_model)
+            sentence_explanation.explain_sentence(sentence_id)
+
     if lcr_rot_inverse:
         # Run Diagnostic classifiers on the LCR Rot inverse model
         lcr_rot_inverse_model = LCRRotInverse(LCR_RotInverseConfig, internal_data_loader)
@@ -120,7 +139,7 @@ def main():
             lcr_rot_inverse_model.run()
 
         # Running Diagnostic Classifiers on the LCR Rot inverse model.
-        if True in diagnostic_classifiers:
+        if True in diagnostic_classifiers.values():
             diagnostic_classifier = DiagnosticClassifier(lcr_rot_inverse_model, diagnostic_classifiers)
             diagnostic_classifier.run()
 
@@ -137,15 +156,46 @@ def main():
         if not os.path.isfile(lcr_rot_hop_model.config.file_to_save_model+".index"):
             lcr_rot_hop_model.run()
 
+        if not os.path.isfile(lcr_rot_hop_model.config.file_of_indices):
+            get_indices_of_correct_wrong_predictions(lcr_rot_hop_model)
+
         # Running Diagnostic Classifiers on the LCR Rot hop model.
-        if True in diagnostic_classifiers:
+        if True in diagnostic_classifiers.values():
             diagnostic_classifier = DiagnosticClassifier(lcr_rot_hop_model, diagnostic_classifiers)
             diagnostic_classifier.run()
 
         # Running Local Interpretable model on the LCR Rot hop model.
         if local_interpretable_model:
+            local_interpretable_model_config = LocalInterpretableConfig
+            results_file = local_interpretable_model_config.get_file_of_results(lcr_rot_hop_model.config.name_of_model)
+
+            if not os.path.isfile(results_file):
+                local_interpretable_model = LocalInterpretableModel(LocalInterpretableConfig, lcr_rot_hop_model)
+                local_interpretable_model.run()
+
+            if visualize_sentiment_word_relevance:
+
+                with open(lcr_rot_hop_model.config.file_of_indices, 'r') as file:
+                    for line in file:
+                        indices = json.loads(line)
+
+                tr_corr_pred = indices['tr_correct_predicted']
+                tr_wrong_pred = indices['tr_wrong_predicted']
+                tr_atp_corr_pred = indices['tr_atp_correct_predicted']
+                tr_atp_wrong_pred = indices['tr_atp_wrong_predicted']
+                tr_natp_corr_pred = indices['tr_natp_correct_predicted']
+                tr_natp_wrong_pred = indices['tr_natp_wrong_predicted']
+
+                polarity_sentence_plot = PolaritySentencePlot(local_interpretable_model_config,
+                                                              lcr_rot_hop_model.config.name_of_model)
+                polarity_sentence_plot.plot(n_of_relevance_words, tr_corr_pred, sentiment)
+
+        if full_explanation_model:
+            diagnostic_classifier = DiagnosticClassifier(lcr_rot_hop_model, diagnostic_classifiers)
             local_interpretable_model = LocalInterpretableModel(LocalInterpretableConfig, lcr_rot_hop_model)
-            local_interpretable_model.run()
+            sentence_explanation = SentenceExplaining(lcr_rot_hop_model, diagnostic_classifier,
+                                                      local_interpretable_model)
+            sentence_explanation.explain_sentence(sentence_id)
 
 
 if __name__ == '__main__':
