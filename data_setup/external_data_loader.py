@@ -21,24 +21,6 @@ class ExternalDataLoader:
         self.parser = CoreNLPParser(url=self.server_url)
         self.core_nlp_dependency_parser = CoreNLPDependencyParser(url=self.server_url)
 
-        self.positive_counter = 0
-        self.negative_counter = 0
-        self.neutral_counter = 0
-
-        self.ambience_general_counter = 0
-        self.drinks_prices_counter = 0
-        self.drinks_quality_counter = 0
-        self.drinks_style_options_counter = 0
-        self.food_general = 0
-        self.food_prices = 0
-        self.food_quality = 0
-        self.food_category = 0
-        self.location_general = 0
-        self.restaurant_general = 0
-        self.restaurant_miscellaneous = 0
-        self.restaurant_prices = 0
-        self.service_general = 0
-
     def load_external_data(self, load_external_file_name, write_internal_file_name):
 
         if not os.path.isfile(load_external_file_name):
@@ -48,6 +30,7 @@ class ExternalDataLoader:
         root = xml_tree.getroot()
 
         opinion_counter = 0
+        total_counter = 0
 
         all_sentences = []
 
@@ -69,7 +52,7 @@ class ExternalDataLoader:
             for opinions in sentence.iter('Opinions'):
 
                 for opinion in opinions.findall('Opinion'):
-
+                    total_counter += 1
                     aspect = opinion.get('target')
                     if aspect != "NULL":
 
@@ -138,13 +121,10 @@ class ExternalDataLoader:
     def get_polarity_number(self, polarity):
 
         if polarity == "positive":
-            self.positive_counter += 1
             return [1, 0, 0]
         elif polarity == "neutral":
-            self.neutral_counter += 1
             return [0, 1, 0]
         elif polarity == "negative":
-            self.negative_counter += 1
             return [0, 0, 1]
         else:
             raise Exception("Polarity ", polarity, " is not in the sentence.")
@@ -152,43 +132,30 @@ class ExternalDataLoader:
     def get_category_number(self, category):
 
         if category == "AMBIENCE#GENERAL":
-            self.ambience_general_counter += 1
             return [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         elif category == "DRINKS#PRICES":
-            self.drinks_prices_counter += 1
             return [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         elif category == "DRINKS#QUALITY":
-            self.drinks_quality_counter += 1
             return [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         elif category == "DRINKS#STYLE_OPTIONS":
-            self.drinks_style_options_counter += 1
             return [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         elif category == "FOOD#GENERAL":
-            self.food_general += 1
             return [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0]
         elif category == "FOOD#PRICES":
-            self.food_prices += 1
             return [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]
         elif category == "FOOD#QUALITY":
-            self.food_quality += 1
             return [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0]
         elif category == "FOOD#STYLE_OPTIONS":
-            self.food_category += 1
             return [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0]
         elif category == "LOCATION#GENERAL":
-            self.location_general += 1
             return [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0]
         elif category == "RESTAURANT#GENERAL":
-            self.restaurant_general += 1
             return [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0]
         elif category == "RESTAURANT#MISCELLANEOUS":
-            self.restaurant_miscellaneous += 1
             return [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0]
         elif category == "RESTAURANT#PRICES":
-            self.restaurant_prices += 1
             return [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0]
         elif category == "SERVICE#GENERAL":
-            self.service_general += 1
             return [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
         else:
             raise Exception("Category ", category, " is not in the sentence.")

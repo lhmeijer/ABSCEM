@@ -1,14 +1,12 @@
 import numpy as np
-from sklearn.linear_model import LinearRegression
-from sklearn import linear_model
 
 
-class MyLinearRegression:
+class LETALinearRegression:
 
     def __init__(self, n_of_subsets):
         self.n_of_subsets = n_of_subsets
 
-    def evaluate_attributes(self, attributes, word_attributes, x, y, lemmas):
+    def evaluate_attributes(self, attributes, word_attributes, x, y, lemmas, aspect_indices, weights, linear_regression):
 
         n_of_attributes = len(attributes)
         n_of_variables = x.shape[1]
@@ -22,6 +20,9 @@ class MyLinearRegression:
         all_indices = []
 
         for index in range(total_variables):
+
+            if index in aspect_indices:
+                continue
 
             if index < n_of_variables:
                 x_training[:, index] = x[:, index]
@@ -54,14 +55,13 @@ class MyLinearRegression:
 
         n_of_classes = y.shape[1]
         coefficients = []
+        intercepts = []
 
         for c in range(n_of_classes):
-            lasso_model = linear_model.Lasso(alpha=0.001, fit_intercept=True)
-            model = lasso_model.fit(x_training, y[:, c])
-            abs_sum = np.nansum(np.abs(model.coef_), axis=0)
-            with np.errstate(divide='ignore', invalid='ignore'):
-                # coefficients.append(np.nan_to_num(model.coef_ / abs_sum))
-                coefficients.append(model.coef_)
+            coefficient, intercept = linear_regression.fit(x_training, np.transpose(np.array([y[:, c]])),
+                                                np.transpose(np.array([weights])))
+            coefficients.append(coefficient)
+            intercepts.append(float(intercept[0]))
 
         word_relevance = []
 
@@ -71,19 +71,20 @@ class MyLinearRegression:
                 'indices_attribute': all_indices[i]
             }
             for c in range(n_of_classes):
-                # dictionary[c] = float(coefficients[c][i])
-                sum_of_coefficients = float(coefficients[c][i])
+                coef = float(coefficients[c][i])
+                intc = intercepts[c]
+                sum_of_coefficients = coef + intc
                 if i >= n_of_variables:
                     for word_index in range(len(all_indices)):
                         if word_index == i:
                             continue
                         if list(set(all_indices[word_index]).intersection(all_indices[i])) == all_indices[word_index]:
-                            sum_of_coefficients += coefficients[c][word_index]
+                            sum_of_coefficients += float(coefficients[c][word_index])
                 dictionary[c] = sum_of_coefficients
 
             word_relevance.append(dictionary)
 
-        return word_relevance
+        return word_relevance, intercepts
 
 
 class PredictionDifference:
@@ -118,7 +119,7 @@ class PredictionDifference:
                 sentence_representation = np.ones(len(word_embeddings), dtype=int)
                 sentence_representation[index] = 0
                 all_words.append(lemmas[index])
-                all_indices.append(index)
+                all_indices.append([index])
             else:
                 attr_index = index - n_of_variables
                 n_of_words_in_attribute = len(attributes[attr_index][0])
@@ -155,7 +156,6 @@ class PredictionDifference:
                                                           x_left_sen_len, x_tar_len, x_right_sen_len)
 
         word_difference = y_pred - pred_neighbour
-        word_difference_abs_sum = np.nansum(np.abs(word_difference), axis=0)
         word_relevance = []
         n_of_classes = neural_language_model.config.number_of_classes
 
@@ -165,9 +165,7 @@ class PredictionDifference:
                 'indices_attribute': all_indices[i]
             }
             for c in range(n_of_classes):
-                with np.errstate(divide='ignore', invalid='ignore'):
-                    # dictionary[c] = float(np.nan_to_num(word_difference[i][c] / word_difference_abs_sum[c]))
-                    dictionary[c] = word_difference[i][c]
+                dictionary[c] = float(word_difference[i][c])
             word_relevance.append(dictionary)
 
         return word_relevance
@@ -176,7 +174,7 @@ class PredictionDifference:
 class SingleSetRegression:
 
     @staticmethod
-    def evaluate_word_relevance(x, y, lemmas):
+    def evaluate_word_relevance(x, y, lemmas, aspect_indices, weights, linear_regression):
 
         n_of_variables = x.shape[1]
 
@@ -184,82 +182,30 @@ class SingleSetRegression:
 
         n_of_classes = y.shape[1]
         coefficients = []
+        intercepts = []
 
         word_relevance = []
+
+        variable_indices = np.arange(n_of_variables, dtype=int)
+        variable_indices = np.delete(variable_indices, aspect_indices)
+        train_x = np.delete(x, aspect_indices, axis=1)
 
         for c in range(n_of_classes):
-            # regression = LinearRegression()
-            # model = regression.fit(x, y[:, c])
-            lasso_model = linear_model.Lasso(alpha=0.001, fit_intercept=True)
-            model = lasso_model.fit(x, y[:, c])
-            abs_sum = np.nansum(np.abs(model.coef_), axis=0)
-            with np.errstate(divide='ignore', invalid='ignore'):
-                # coefficients.append(np.nan_to_num(model.coef_ / abs_sum))
-                coefficients.append(model.coef_)
+            coefficient, intercept = linear_regression.fit(train_x, np.transpose(np.array([y[:, c]])),
+                                        np.transpose(np.array([weights])))
+            coefficients.append(coefficient)
+            intercepts.append(float(intercept[0]))
 
-        for i in range(n_of_variables):
+        for i in range(len(variable_indices)):
+
             dictionary = {
-                'word_attribute': lemmas[i],
+                'word_attribute': lemmas[variable_indices[i]],
+                'indices_attribute': [int(variable_indices[i])]
             }
             for c in range(n_of_classes):
-                dictionary[c] = float(coefficients[c][i])
+                coef = float(coefficients[c][i])
+                intc = intercepts[c]
+                dictionary[c] = coef + intc
             word_relevance.append(dictionary)
 
-        return word_relevance
-
-
-class SingleSetPredictionDifference:
-
-    @staticmethod
-    def evaluate_word_relevance(word_embeddings, aspect_indices, y_pred, lemmas, neural_language_model):
-
-        n_of_variables = len(word_embeddings)
-
-        assert n_of_variables == len(lemmas)
-
-        begin_aspect_index = aspect_indices[0]
-        number_of_aspects = len(aspect_indices)
-
-        neighbour_embeddings = []
-        neighbour_aspects = []
-        all_words = []
-
-        for var_index in range(n_of_variables):
-
-            if var_index not in aspect_indices:
-
-                sentence_representation = np.ones(n_of_variables, dtype=int)
-                sentence_representation[var_index] = 0
-                all_words.append(lemmas[var_index])
-
-                n_of_ones_before_aspect = int(np.sum(sentence_representation[:begin_aspect_index]))
-                neighbour_aspect = np.arange(n_of_ones_before_aspect, n_of_ones_before_aspect + number_of_aspects)
-                neighbour_aspects.append(neighbour_aspect)
-
-                neighbour_embedding = np.array(word_embeddings)[sentence_representation == 1]
-                neighbour_embeddings.append(neighbour_embedding)
-
-        x_left_part, x_target_part, x_right_part, x_left_sen_len, x_tar_len, x_right_sen_len = \
-            neural_language_model.internal_data_loader.split_embeddings(np.array(neighbour_embeddings),
-                                                          np.array(neighbour_aspects),
-                                                          neural_language_model.config.max_sentence_length,
-                                                          neural_language_model.config.max_target_length)
-
-        pred_neighbour, _ = neural_language_model.predict(x_left_part, x_target_part, x_right_part,
-                                                          x_left_sen_len, x_tar_len, x_right_sen_len)
-
-        word_difference = y_pred - pred_neighbour
-        word_difference_abs_sum = np.nansum(np.abs(word_difference), axis=0)
-        word_relevance = []
-        n_of_classes = neural_language_model.config.number_of_classes
-
-        for i in range(word_difference.shape[0]):
-            dictionary = {
-                'word_attribute': all_words[i],
-            }
-            for c in range(n_of_classes):
-                with np.errstate(divide='ignore', invalid='ignore'):
-                    dictionary[c] = float(np.nan_to_num(word_difference[i][c] / word_difference_abs_sum[c]))
-            word_relevance.append(dictionary)
-
-        return word_relevance
+        return word_relevance, intercepts

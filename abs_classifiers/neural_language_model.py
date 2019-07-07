@@ -40,6 +40,7 @@ class NeuralLanguageModel:
                                                     target_lengths=tar_len,
                                                     keep_prob1=keep_prob1, keep_prob2=keep_prob2)
 
+        # Saving procedure for the Tensorflow graph
         tf.add_to_collection(self.config.name_of_model + "_prob", prob)
         tf.add_to_collection(self.config.name_of_model + "_lhs", layer_information['left_hidden_state'])
         tf.add_to_collection(self.config.name_of_model + "_rhs", layer_information['right_hidden_state'])
@@ -146,10 +147,6 @@ class NeuralLanguageModel:
                 test_cost = test_cost / test_cnt
                 print('Iter {}: mini-batch loss={:.6f}, train acc={:.6f}, test acc={:.6f}'.format(i, test_cost,
                                                                                                   train_acc, test_acc))
-                print("training prediction per class: ", tr_prediction_y)
-                print("training correct prediction per class: ", tr_correct_prediction_y)
-                print("test prediction per class: ", te_prediction_y)
-                print("test correct prediction per class: ", te_correct_prediction_y)
 
                 if test_acc > max_test_acc:
                     max_test_acc = test_acc

@@ -1,7 +1,8 @@
 import numpy as np
-from local_interpretable_model.attribute_evaluator import MyLinearRegression, PredictionDifference, \
-    SingleSetRegression, SingleSetPredictionDifference
+from local_interpretable_model.contribution_evaluators import LETALinearRegression, PredictionDifference, \
+    SingleSetRegression
 import json
+from local_interpretable_model.linear_model import LinearModel
 
 
 class LocalInterpretableModel:
@@ -12,6 +13,7 @@ class LocalInterpretableModel:
 
     def run(self):
 
+        # Loading all the necessary information
         x = np.array(self.neural_language_model.internal_data_loader.word_embeddings_training_all)
         aspects_indices = np.array(self.neural_language_model.internal_data_loader.aspect_indices_training)
         lemmatized_sentence = np.array(self.neural_language_model.internal_data_loader.lemmatized_training)
@@ -20,11 +22,13 @@ class LocalInterpretableModel:
         aspects_categories = np.array(self.neural_language_model.internal_data_loader.categories_matrix_training)
         aspects_polarities = np.array(self.neural_language_model.internal_data_loader.polarity_matrix_training)
 
+        # Obtaining the left, right and target contexts
         x_left_part, x_target_part, x_right_part, x_left_sen_len, x_tar_len, x_right_sen_len = \
             self.neural_language_model.internal_data_loader.split_embeddings(
                 x, aspects_indices, self.neural_language_model.config.max_sentence_length,
                 self.neural_language_model.config.max_target_length)
 
+        # Getting the prediction by the neural language model
         y_pred, _ = self.neural_language_model.predict(np.array(x_left_part), np.array(x_target_part),
                                                        np.array(x_right_part), np.array(x_left_sen_len),
                                                        np.array(x_tar_len), np.array(x_right_sen_len))
@@ -37,88 +41,95 @@ class LocalInterpretableModel:
         }
 
         results = [model_information]
-        # word_index = sentences_id.index("744478:1")
 
-        # for index in range(x.shape[0]):
-        # for index in [word_index]:
-        for index in range(1000, 1015):
+        for index in range(x.shape[0]):
 
             print("index ", index)
 
-            x_neighbours, y_neighbours = self.config.locality_model.get_neighbours(x[index], aspects_indices[index],
-                                                                                   self.neural_language_model)
-            print("lemmatized ", lemmatized_sentence[index])
-            print("x_neighbours ", x_neighbours.shape)
-            print("y_neighbours ", y_neighbours.shape)
+            # Getting the training set Z
+            x_neighbours, y_neighbours, weights = self.config.locality_model.get_neighbours(x[index],
+                                                                                            aspects_indices[index],
+                                                                                            self.neural_language_model)
+            pred_y = np.argmax(y_pred[index])
 
-            true_y = np.argmax(aspects_polarities[index])
+            # Obtaining the indices of the word combinations
+            attributes_indices, attributes_words = self.config.decision_tree.extract_word_combinations(
+                x_neighbours, y_neighbours, lemmatized_sentence[index], pred_y, aspects_indices[index])
 
-            attributes_indices, attributes_words = self.config.rule_based_classifier.extract_rules(x_neighbours,
-                                                                                                   y_neighbours,
-                                                                                                   lemmatized_sentence
-                                                                                                   [index], true_y,
-                                                                                                   aspects_indices
-                                                                                                   [index])
+            linear_regression = LinearModel(self.config.learning_rate, self.config.n_epochs,
+                                                 self.config.batch_size, self.neural_language_model)
+
+            # Obtain the contributions by A-LIME
             word_evaluator_regression = SingleSetRegression()
-            word_relevance_linear_regression = word_evaluator_regression.evaluate_word_relevance(x_neighbours,
-                                                                                                 y_neighbours,
-                                                                                                 lemmatized_sentence
-                                                                                                 [index])
+            word_relevance_linear_regression, intercepts_lr = word_evaluator_regression.evaluate_word_relevance(
+                x_neighbours, y_neighbours, lemmatized_sentence[index], aspects_indices[index], weights,
+                linear_regression)
             print("word_relevance_linear_regression ", word_relevance_linear_regression)
 
-            attribute_evaluator_regression = MyLinearRegression(self.config.n_of_subset)
-            subsets_word_relevance_linear_regression = attribute_evaluator_regression.evaluate_attributes(
-                attributes_indices, attributes_words, x_neighbours, y_neighbours, lemmatized_sentence[index])
+            # Obtain the contributions by LETA
+            attribute_evaluator_regression = LETALinearRegression(self.config.n_of_subset)
+            subsets_word_relevance_linear_regression, intercepts_slr = attribute_evaluator_regression.evaluate_attributes(
+                attributes_indices, attributes_words, x_neighbours, y_neighbours, lemmatized_sentence[index],
+                aspects_indices[index], weights, linear_regression)
             print("subsets_word_relevance_linear_regression ", subsets_word_relevance_linear_regression)
+
+            # Obtain the contribution by A-LACE
             attribute_evaluator_difference = PredictionDifference(self.config.n_of_subset)
             subsets_word_relevance_pred_difference = attribute_evaluator_difference.evaluate_attributes(
                 attributes_indices, attributes_words, x[index], aspects_indices[index], y_pred[index],
                 self.neural_language_model, lemmatized_sentence[index])
             print("subsets_word_relevance_pred_difference ", subsets_word_relevance_pred_difference)
-            #
-            # result = {
-            #     'sentence_id': sentences_id[index],
-            #     'lemmatized_sentence': lemmatized_sentence[index],
-            #     'aspects': aspects[index],
-            #     'aspect_category_matrix': aspects_categories[index].tolist(),
-            #     'aspect_polarity_matrix': aspects_polarities[index].tolist(),
-            #     'subsets_word_relevance_linear_regression': subsets_word_relevance_linear_regression,
-            #     'subsets_word_relevance_pred_difference': subsets_word_relevance_pred_difference,
-            #     'word_relevance_linear_regression': word_relevance_linear_regression,
-            #     'word_relevance_prediction_difference': word_relevance_prediction_difference
-            # }
-            # print("result ", result)
-            #
-            # results.append(result)
 
-        # file = self.config.get_file_of_results(self.neural_language_model.config.name_of_model)
-        # with open(file, 'w') as outfile:
-        #     json.dump(results, outfile, ensure_ascii=False)
+            result = {
+                'sentence_id': sentences_id[index],
+                'sentence_index': index,
+                'lemmatized_sentence': lemmatized_sentence[index],
+                'aspects': aspects[index],
+                'prediction': y_pred[index].tolist(),
+                'aspect_category_matrix': aspects_categories[index].tolist(),
+                'aspect_polarity_matrix': aspects_polarities[index].tolist(),
+                'subsets_word_relevance_linear_regression': subsets_word_relevance_linear_regression,
+                'intercepts_slr': intercepts_slr,
+                'subsets_word_relevance_pred_difference': subsets_word_relevance_pred_difference,
+                'word_relevance_linear_regression': word_relevance_linear_regression,
+                'intercepts_lr': intercepts_lr
+            }
 
-    def single_run(self, x, aspects_polarity, y_pred, aspects_indices, lemmatized_sentence):
+            results.append(result)
 
-        x_neighbours, y_neighbours = self.config.locality_model.get_neighbours(x, aspects_indices,
+        file = self.config.get_file_of_results(self.neural_language_model.config.name_of_model)
+        with open(file, 'w') as outfile:
+            json.dump(results, outfile, ensure_ascii=False)
+
+    def single_run(self, x, y_pred, aspects_indices, lemmatized_sentence):
+
+        # Getting the training set Z
+        x_neighbours, y_neighbours, weights = self.config.locality_model.get_neighbours(x, aspects_indices,
                                                                                self.neural_language_model)
 
-        true_y = np.argmax(aspects_polarity)
+        pred_y = np.argmax(y_pred)
 
-        attributes_indices, attributes_words = self.config.rule_based_classifier.extract_rules(x_neighbours,
-                                                                                               y_neighbours,
-                                                                                               lemmatized_sentence,
-                                                                                               true_y)
+        # Obtaining the indices of the word combinations
+        attributes_indices, attributes_words = self.config.decision_tree.extract_word_combinations(
+            x_neighbours, y_neighbours, lemmatized_sentence, pred_y, aspects_indices)
+
+        linear_regression = LinearModel(self.config.learning_rate, self.config.n_epochs,
+                                             self.config.batch_size, self.neural_language_model)
+        # Obtain the contributions by A-LIME
         word_evaluator_regression = SingleSetRegression()
-        relevance_lr = word_evaluator_regression.evaluate_word_relevance(x_neighbours, y_neighbours,
-                                                                         lemmatized_sentence)
-        word_evaluator_difference = SingleSetPredictionDifference()
-        relevance_pd = word_evaluator_difference.evaluate_word_relevance(
-            x, aspects_indices, y_pred, lemmatized_sentence, self.neural_language_model)
+        relevance_lr, intercept_lr = word_evaluator_regression.evaluate_word_relevance(x_neighbours, y_neighbours,
+                                                                         lemmatized_sentence, aspects_indices, weights,
+                                                                                       linear_regression)
+        # Obtain the contributions by LETA
+        attribute_evaluator_regression = LETALinearRegression(self.config.n_of_subset)
+        subsets_relevance_lr, intercept_slr = attribute_evaluator_regression.evaluate_attributes(
+            attributes_indices, attributes_words, x_neighbours, y_neighbours, lemmatized_sentence, aspects_indices,
+            weights, linear_regression)
 
-        attribute_evaluator_regression = MyLinearRegression(self.config.n_of_subset)
-        subsets_relevance_lr = attribute_evaluator_regression.evaluate_attributes(
-            attributes_indices, attributes_words, x_neighbours, y_neighbours)
-
+        # Obtain the contribution by A-LACE
         attribute_evaluator_difference = PredictionDifference(self.config.n_of_subset)
         subsets_relevance_pd = attribute_evaluator_difference.evaluate_attributes(
-            attributes_indices, attributes_words, x, aspects_indices, y_pred, self.neural_language_model)
+            attributes_indices, attributes_words, x, aspects_indices, y_pred, self.neural_language_model,
+            lemmatized_sentence)
 
-        return relevance_lr, relevance_pd, subsets_relevance_lr, subsets_relevance_pd
+        return relevance_lr, intercept_lr, subsets_relevance_lr, intercept_slr, subsets_relevance_pd

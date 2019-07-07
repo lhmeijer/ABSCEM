@@ -2,371 +2,126 @@ import os
 import json
 import numpy as np
 import matplotlib.pyplot as plt
+from nltk.parse import CoreNLPParser
 
 
 class SentencePlot:
 
-    @staticmethod
-    def get_polarity_number(polarity):
+    def __init__(self, config):
+        self.config = config
 
-        if polarity == "positive":
-            return 0
-        elif polarity == "neutral":
-            return 1
-        elif polarity == "negative":
-            return 2
+    @staticmethod
+    def get_polarity(polarity_number):
+
+        if polarity_number == 0:
+            return "positive"
+        elif polarity_number == 1:
+            return "neutral"
+        elif polarity_number == 2:
+            return "negative"
         else:
-            raise Exception("Polarity ", polarity, " is not in the sentence.")
+            raise Exception("Polarity ", polarity_number, " is not in the sentence.")
 
-    @staticmethod
-    def get_category_number(category):
+    def plot_final_results(self, x, y, polarity_index, name_method, index, id, name_nlm, intercept):
 
-        if category == "AMBIENCE#GENERAL":
-            return 0
-        elif category == "DRINKS#PRICES":
-            return 1
-        elif category == "DRINKS#QUALITY":
-            return 2
-        elif category == "DRINKS#STYLE_OPTIONS":
-            return 3
-        elif category == "FOOD#GENERAL":
-            return 4
-        elif category == "FOOD#PRICES":
-            return 5
-        elif category == "FOOD#QUALITY":
-            return 6
-        elif category == "FOOD#STYLE_OPTIONS":
-            return 7
-        elif category == "LOCATION#GENERAL":
-            return 8
-        elif category == "RESTAURANT#GENERAL":
-            return 9
-        elif category == "RESTAURANT#MISCELLANEOUS":
-            return 10
-        elif category == "RESTAURANT#PRICES":
-            return 11
-        elif category == "SERVICE#GENERAL":
-            return 12
-        else:
-            raise Exception("Category ", category, " is not in the sentence.")
 
-    @staticmethod
-    def plot_final_results(x, y, title):
-
-        max_value = np.max(x) + 0.02
-        min_value = np.min(x) - 0.02
+        max_value = np.max(x[polarity_index]) + np.max(x[polarity_index]) * 0.1
+        min_value = np.min(x[polarity_index]) - np.max(x[polarity_index]) * 0.1
         n_of_relevance_words = x.shape[1]
 
         y_pos = np.arange(n_of_relevance_words)
 
-        fig = plt.figure(figsize=(9, 6))
+        fig = plt.figure(figsize=(12, 6.5))
+        fig.set_size_inches(13.5, 9.5)
         ax = fig.add_subplot(111)
-        # fig.subplots_adjust(left=0.125, right=0.5)
-        # plt.yticks(y_pos, y[0], fontsize=15, fontweight=100, fontstretch=500)
-        # ax.set_yticklabels(y[0], fontsize=15, fontweight=100, fontstretch=500)
 
-        ax.tick_params(length=6, width=1)
-
-        ax.set_title("title van de plot")
+        ax.tick_params(length=6, axis='y', width=1, labelsize=45)
+        ax.tick_params(length=6, axis='x', width=1, labelsize=25)
 
         ax.set_xlim([min_value, max_value])
-        ax.axvline(0, color='grey', alpha=0.50)
+        ax.axvline(intercept[polarity_index], color='grey', alpha=0.40)
 
-        ax.set_xlabel(title + ": positive")
+        title = 'Contribution towards the ' + str(self.get_polarity(polarity_index)) + ' sentiment value'
+        ax.set_xlabel(title, fontsize=20)
 
-        # plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+        bar = ax.barh(y_pos, x[polarity_index], align='center', height=0.6, alpha=0.5,
+                               tick_label=y[polarity_index])
 
-        # positive plot
-        bar_positive = ax.barh(y_pos, x[0], align='center', height=0.80, alpha=0.5, tick_label=y[0])
-        plt.show()
+        plt.subplots_adjust(left=0.54)
+        file = self.config.get_sentence_results(name_method, index, id, name_nlm, self.get_polarity(polarity_index))
 
-        # neutral plot
-        fig2 = plt.figure(figsize=(9, 6))
-        ax = fig2.add_subplot(111)
-        ax.tick_params(length=6, width=1)
-
-        ax.set_title("title van de plot")
-
-        ax.set_xlim([min_value, max_value])
-        ax.axvline(0, color='grey', alpha=0.50)
-
-        ax.set_xlabel(title + ": neutral")
-        bar_neutral= ax.barh(y_pos, x[1], align='center', height=0.80, alpha=0.5, tick_label=y[1])
-        plt.show()
-        # performance = x[1]
-        #
-        # plt.barh(y_pos, performance, align='center', alpha=0.5)
-        # plt.yticks(y_pos, y[1])
-        # plt.xlabel('Relative word relevance')
-        # plt.title(title + ": neutral")
-
-        # plt.show()
-
-        # negative plot
-        fig3 = plt.figure(figsize=(9, 6))
-        ax = fig3.add_subplot(111)
-        ax.tick_params(length=6, width=1)
-
-        ax.set_title("title van de plot")
-
-        ax.set_xlim([min_value, max_value])
-        ax.axvline(0, color='grey', alpha=0.50)
-
-        ax.set_xlabel(title + ": negative")
-        bar_negative = ax.barh(y_pos, x[2], align='center', height=0.80, alpha=0.5, tick_label=y[2])
-        plt.show()
-        # performance = x[2]
-        #
-        # plt.barh(y_pos, performance, align='center', alpha=0.5)
-        # plt.yticks(y_pos, y[2])
-        # plt.xlabel('Relative word relevance')
-        # plt.title(title + ": negative")
-        #
-        # plt.show()
+        plt.savefig(file)
 
 
 class SingleSentencePlot(SentencePlot):
 
-    def __init__(self, config, nlm_name):
-        self.config = config
-        self.nlm_name = nlm_name
+    def __init__(self, config, nl_model):
+        super().__init__(config)
+        self.nl_model = nl_model
+        self.server_url = 'http://localhost:9000'
+        self.parser = CoreNLPParser(url=self.server_url)
 
     def plot(self, max_relevance_words_in_plot, sentence_id="1004293:0"):
 
-        results_file = self.config.get_file_of_results(self.nlm_name)
+        results_file = self.config.get_file_of_results(self.nl_model.config.name_of_model)
 
         if not os.path.isfile(results_file):
             raise ("[!] Data %s not found" % results_file)
+
+        index = -1
+        original_sentences = self.nl_model.internal_data_loader.original_sentence_training
 
         with open(results_file, 'r') as file:
             for line in file:
                 sentences = json.loads(line)
                 sentences.pop(0)
                 for sentence in sentences:
+
+                    index += 1
 
                     if sentence['sentence_id'] == sentence_id:
 
-                        max_word_relevance = np.full((3, max_relevance_words_in_plot), -1.)
-                        relevant_words = np.empty([3, max_relevance_words_in_plot], dtype=object)
+                        sentence_index = sentence['sentence_index']
 
-                        for attribute_dict in sentence['word_relevance_linear_regression']:
-
-                            for i in range(3):
-
-                                min_value = max_word_relevance[i].min()
-                                min_index = max_word_relevance[i].argmin()
-
-                                if attribute_dict[str(i)] > min_value:
-                                    max_word_relevance[i][min_index] = attribute_dict[str(i)]
-
-                                    n_of_words = len(attribute_dict['word_attribute'])
-                                    word = str(attribute_dict['word_attribute'][0])
-
-                                    for w in range(1, n_of_words):
-                                        word = word + ' ' + str(attribute_dict['word_attribute'][w])
-
-                                    relevant_words[i][min_index] = word
-
-                        title = "Most relevance words for sentence id " + str(sentence_id) + \
-                                " and neural language model " + self.nlm_name
-                        self.plot_final_results(max_word_relevance, relevant_words, title)
+                        tokenized_sentence = list(self.parser.tokenize(original_sentences[sentence_index]))
+                        print("tokenized_sentence ", tokenized_sentence)
 
                         max_word_relevance = np.full((3, max_relevance_words_in_plot), -1.)
                         relevant_words = np.empty([3, max_relevance_words_in_plot], dtype=object)
 
-                        for attribute_dict in sentence['word_relevance_pred_difference']:
-
-                            for i in range(3):
-
-                                min_value = max_word_relevance[i].min()
-                                min_index = max_word_relevance[i].argmin()
-
-                                if attribute_dict[str(i)] > min_value:
-                                    max_word_relevance[i][min_index] = attribute_dict[str(i)]
-
-                                    n_of_words = len(attribute_dict['word_attribute'])
-                                    word = str(attribute_dict['word_attribute'][0])
-
-                                    for w in range(1, n_of_words):
-                                        word = word + ' ' + str(attribute_dict['word_attribute'][w])
-
-                                    relevant_words[i][min_index] = word
-
-                        title = "Most relevance words for sentence id " + str(sentence_id) + \
-                                " and neural language model " + self.nlm_name
-                        self.plot_final_results(max_word_relevance, relevant_words, title)
-
-
-class PolaritySentencePlot(SentencePlot):
-
-    def __init__(self, config, nlm_name):
-        self.config = config
-        self.nlm_name = nlm_name
-
-    def plot(self, max_relevance_words_in_plot, indices, polarity="positive"):
-
-        print("indices ", indices)
-
-        number_of_polarity = self.get_polarity_number(polarity)
-
-        results_file = self.config.get_file_of_results(self.nlm_name)
-
-        if not os.path.isfile(results_file):
-            raise ("[!] Data %s not found" % results_file)
-
-        max_word_relevance_slr = np.zeros((3, max_relevance_words_in_plot), dtype=float)
-        relevant_words_slr = np.empty([3, max_relevance_words_in_plot], dtype=object)
-
-        max_word_relevance_spd = np.zeros((3, max_relevance_words_in_plot), dtype=float)
-        relevant_words_spd = np.empty([3, max_relevance_words_in_plot], dtype=object)
-
-        max_word_relevance_lr = np.zeros((3, max_relevance_words_in_plot), dtype=float)
-        relevant_words_lr = np.empty([3, max_relevance_words_in_plot], dtype=object)
-
-        max_word_relevance_pd = np.zeros((3, max_relevance_words_in_plot), dtype=float)
-        relevant_words_pd = np.empty([3, max_relevance_words_in_plot], dtype=object)
-
-        index_counter = 0
-        index_indices = 0
-
-        with open(results_file, 'r') as file:
-            for line in file:
-                sentences = json.loads(line)
-                sentences.pop(0)
-                for sentence in sentences:
-
-                    if index_indices == len(indices):
-                        break
-
-                    print("np.argmax(sentence['aspect_polarity_matrix']) ", np.argmax(sentence['aspect_polarity_matrix']))
-                    print("number_of_polarity ", number_of_polarity)
-                    print("index_counter ", index_counter)
-                    print("indices[index_indices] ", indices[index_indices])
-                    if index_counter == indices[index_indices]:
-                        index_indices += 1
-
-                    if np.argmax(sentence['aspect_polarity_matrix']) == number_of_polarity and \
-                            index_counter == indices[index_indices - 1]:
-
-                        print("sentence ", sentence)
                         for attribute_dict in sentence['subsets_word_relevance_linear_regression']:
 
-                            print("attribute_dict ", attribute_dict)
-
                             for i in range(3):
 
-                                min_value = max_word_relevance_slr[i].min()
-                                min_index = max_word_relevance_slr[i].argmin()
+                                min_value = max_word_relevance[i].min()
+                                min_index = max_word_relevance[i].argmin()
 
                                 if attribute_dict[str(i)] > min_value:
-                                    max_word_relevance_slr[i][min_index] = attribute_dict[str(i)]
+                                    max_word_relevance[i][min_index] = attribute_dict[str(i)]
 
-                                    n_of_words = len(attribute_dict['word_attribute'])
-                                    word = attribute_dict['word_attribute'][0]
+                                    n_indices = len(attribute_dict['indices_attribute'])
+                                    word = str(tokenized_sentence[attribute_dict['indices_attribute'][0]])
 
-                                    for w in range(1, n_of_words):
-                                        word = word + " " + attribute_dict['word_attribute'][w]
+                                    for w in range(1, n_indices):
+                                        word = word + ' ' + \
+                                               str(tokenized_sentence[attribute_dict['indices_attribute'][w]])
 
-                                    relevant_words_slr[i][min_index] = word
+                                    relevant_words[i][min_index] = word
+
+                        intercept = sentence['intercepts_slr']
+
+                        self.plot_final_results(max_word_relevance, relevant_words,
+                                                np.argmax(sentence['prediction']), "OWN", sentence_index,
+                                                sentence_id, self.nl_model.config.name_of_model, intercept)
+                        self.plot_final_results(max_word_relevance, relevant_words,
+                                                np.argmax(sentence['aspect_polarity_matrix']), "OWN", sentence_index,
+                                                sentence_id, self.nl_model.config.name_of_model, intercept)
+
+                        max_word_relevance = np.full((3, max_relevance_words_in_plot), -1.)
+                        relevant_words = np.empty([3, max_relevance_words_in_plot], dtype=object)
 
                         for attribute_dict in sentence['subsets_word_relevance_pred_difference']:
 
-                            print("attribute_dict ", attribute_dict)
-
-                            for i in range(3):
-
-                                min_value = max_word_relevance_spd[i].min()
-                                min_index = max_word_relevance_spd[i].argmin()
-
-                                if attribute_dict[str(i)] > min_value:
-                                    max_word_relevance_spd[i][min_index] = attribute_dict[str(i)]
-
-                                    n_of_words = len(attribute_dict['word_attribute'])
-                                    word = attribute_dict['word_attribute'][0]
-
-                                    for w in range(1, n_of_words):
-                                        word = word + " " + attribute_dict['word_attribute'][w]
-
-                                    relevant_words_spd[i][min_index] = word
-
-                        for attribute_dict in sentence['word_relevance_linear_regression']:
-
-                            for i in range(3):
-
-                                min_value = max_word_relevance_lr[i].min()
-                                min_index = max_word_relevance_lr[i].argmin()
-
-                                if attribute_dict[str(i)] > min_value:
-                                    max_word_relevance_lr[i][min_index] = attribute_dict[str(i)]
-
-                                    n_of_words = len(attribute_dict['word_attribute'])
-                                    word = attribute_dict['word_attribute'][0]
-
-                                    for w in range(1, n_of_words):
-                                        word = word + " " + attribute_dict['word_attribute'][w]
-
-                                    relevant_words_lr[i][min_index] = word
-
-                        for attribute_dict in sentence['word_relevance_prediction_difference']:
-
-                            for i in range(3):
-
-                                min_value = max_word_relevance_pd[i].min()
-                                min_index = max_word_relevance_pd[i].argmin()
-
-                                if attribute_dict[str(i)] > min_value:
-                                    max_word_relevance_pd[i][min_index] = attribute_dict[str(i)]
-
-                                    n_of_words = len(attribute_dict['word_attribute'])
-                                    word = attribute_dict['word_attribute'][0]
-
-                                    for w in range(1, n_of_words):
-                                        word = word + " " + attribute_dict['word_attribute'][w]
-
-                                    relevant_words_pd[i][min_index] = word
-                    index_counter += 1
-
-        title = "Most relevance words for polarity " + str(polarity) + " subset linear regression"
-        self.plot_final_results(max_word_relevance_slr, relevant_words_slr, title)
-
-        title = "Most relevance words for polarity " + str(polarity) + " subset prediction difference"
-        self.plot_final_results(max_word_relevance_spd, relevant_words_spd, title)
-
-        title = "Most relevance words for polarity " + str(polarity) + " single linear regression"
-        self.plot_final_results(max_word_relevance_lr, relevant_words_lr, title)
-
-        title = "Most relevance words for polarity " + str(polarity) + " single prediction difference"
-        self.plot_final_results(max_word_relevance_pd, relevant_words_pd, title)
-
-
-class CategorySentencePlot(SentencePlot):
-
-    def __init__(self, config, nlm_name):
-        self.config = config
-        self.nlm_name = nlm_name
-
-    def plot(self, max_relevance_words_in_plot, category="AMBIENCE#GENERAL"):
-
-        number_of_category = self.get_category_number(category)
-
-        results_file = self.config.get_file_of_results(self.nlm_name)
-
-        if not os.path.isfile(results_file):
-            raise ("[!] Data %s not found" % results_file)
-
-        max_word_relevance = np.zeros((3, max_relevance_words_in_plot), dtype=float)
-        relevant_words = np.empty([3, max_relevance_words_in_plot], dtype=object)
-
-        with open(results_file, 'r') as file:
-            for line in file:
-                sentences = json.loads(line)
-                sentences.pop(0)
-                for sentence in sentences:
-
-                    if np.argmax(sentence['aspect_category_matrix']) == number_of_category:
-
-                        for attribute_dict in sentence['word_relevance_per_set']:
-
                             for i in range(3):
 
                                 min_value = max_word_relevance[i].min()
@@ -375,13 +130,48 @@ class CategorySentencePlot(SentencePlot):
                                 if attribute_dict[str(i)] > min_value:
                                     max_word_relevance[i][min_index] = attribute_dict[str(i)]
 
-                                    n_of_words = len(attribute_dict['word_attribute'])
-                                    word = attribute_dict['word_attribute'][0]
+                                    indices = attribute_dict['indices_attribute']
+                                    if type(indices) == list:
 
-                                    for w in range(1, n_of_words):
-                                        word = " " + attribute_dict['word_attribute'][w]
+                                        n_indices = len(attribute_dict['indices_attribute'])
+                                        word = str(tokenized_sentence[attribute_dict['indices_attribute'][0]])
+
+                                        for w in range(1, n_indices):
+                                            word = word + ' ' + \
+                                                   str(tokenized_sentence[attribute_dict['indices_attribute'][w]])
+                                    else:
+                                        word = str(tokenized_sentence[indices])
 
                                     relevant_words[i][min_index] = word
 
-        title = "Most relevance words for category " + str(category) + " and neural language model " + self.nlm_name
-        self.plot_final_results(max_word_relevance, relevant_words, title)
+                        intercept = np.zeros(len(sentence['prediction']))
+
+                        self.plot_final_results(max_word_relevance, relevant_words,
+                                                np.argmax(sentence['prediction']), "LACE", sentence_index,
+                                                sentence_id, self.nl_model.config.name_of_model, intercept)
+                        self.plot_final_results(max_word_relevance, relevant_words,
+                                                np.argmax(sentence['aspect_polarity_matrix']), "LACE", sentence_index,
+                                                sentence_id, self.nl_model.config.name_of_model, intercept)
+
+                        max_word_relevance = np.full((3, max_relevance_words_in_plot), -1.)
+                        relevant_words = np.empty([3, max_relevance_words_in_plot], dtype=object)
+
+                        for attribute_dict in sentence['word_relevance_linear_regression']:
+
+                            for i in range(3):
+
+                                min_value = max_word_relevance[i].min()
+                                min_index = max_word_relevance[i].argmin()
+
+                                if attribute_dict[str(i)] > min_value:
+                                    max_word_relevance[i][min_index] = attribute_dict[str(i)]
+                                    relevant_words[i][min_index] = str(tokenized_sentence[attribute_dict['indices_attribute'][0]])
+
+                        intercept = sentence['intercepts_slr']
+
+                        self.plot_final_results(max_word_relevance, relevant_words,
+                                                np.argmax(sentence['prediction']), "LIME", sentence_index,
+                                                sentence_id, self.nl_model.config.name_of_model, intercept)
+                        self.plot_final_results(max_word_relevance, relevant_words,
+                                                np.argmax(sentence['aspect_polarity_matrix']), "LIME", sentence_index,
+                                                sentence_id, self.nl_model.config.name_of_model, intercept)

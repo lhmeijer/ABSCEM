@@ -11,6 +11,7 @@ class InternalDataLoader:
 
         self.sentence_id_in_training = []
         self.total_word_in_training = []
+        self.original_sentence_training = []
         self.lemmatized_training = []
         self.word_embeddings_training_all = []
         self.sentiment_distribution_training = []
@@ -28,6 +29,7 @@ class InternalDataLoader:
 
         self.sentence_id_in_test = []
         self.total_word_in_test = []
+        self.original_sentence_test = []
         self.lemmatized_test = []
         self.word_embeddings_test_all = []
         self.sentiment_distribution_test = []
@@ -59,6 +61,7 @@ class InternalDataLoader:
                         number_of_words = sentence['lemmatized_sentence']
                         self.total_word_in_training.append(number_of_words)
 
+                        self.original_sentence_training.append(sentence['original_sentence'])
                         lemmatized_sentence = sentence['lemmatized_sentence']
                         self.lemmatized_training.append(lemmatized_sentence)
 
@@ -97,6 +100,7 @@ class InternalDataLoader:
                         number_of_words = sentence['lemmatized_sentence']
                         self.total_word_in_test.append(number_of_words)
 
+                        self.original_sentence_test.append(sentence['original_sentence'])
                         lemmatized_sentence = sentence['lemmatized_sentence']
                         self.lemmatized_test.append(lemmatized_sentence)
 
