@@ -1,21 +1,6 @@
 import tensorflow as tf
 
 
-def dynamic_rnn(cell, inputs, n_hidden, length, max_len, scope_name):
-
-    outputs, _ = tf.nn.dynamic_rnn(
-        cell(n_hidden),
-        inputs=inputs,
-        sequence_length=length,
-        dtype=tf.float32,
-        scope=scope_name
-    )  # outputs -> batch_size * max_len * n_hidden
-    mask = tf.reverse(tf.cast(tf.sequence_mask(length, max_len), tf.float32), [1])
-    mask_tiled = tf.tile(mask, [1, n_hidden])
-    mask_3d = tf.reshape(mask_tiled, tf.shape(outputs))
-    return tf.multiply(outputs, mask_3d)
-
-
 def bi_dynamic_rnn(cell, inputs, n_hidden, length, scope_name):
 
     outputs, _ = tf.nn.bidirectional_dynamic_rnn(
