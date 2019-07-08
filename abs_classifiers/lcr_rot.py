@@ -1,3 +1,4 @@
+# this code is based on the code of lcr rot in https://github.com/NUSTM/ABSC
 from abs_classifiers.neural_language_model import NeuralLanguageModel
 import tensorflow as tf
 from model_layers.attention_layers import attention_function
