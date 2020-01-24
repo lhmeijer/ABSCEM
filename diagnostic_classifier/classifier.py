@@ -15,6 +15,9 @@ class SingleMLPClassifier:
         self.model_name = model_name
         self.id = ''
 
+    def set_learning_rate(self, learning_rate):
+        self.learning_rate = learning_rate
+
     def multilayer_perceptron(self, x):
 
         weights = {
@@ -92,10 +95,10 @@ class SingleMLPClassifier:
                                                                    feed_dict=train)
                     train_acc += _train_acc
                     train_cnt += train_num
-
-                print('all samples={}, correct prediction={}'.format(train_cnt, train_acc))
-                train_acc = train_acc / train_cnt
-                print('Epoch {}: train acc={:.6f}'.format(epoch, train_acc))
+                if epoch % 10 == 0 or epoch == (self.number_of_epochs - 1):
+                    print('all samples={}, correct prediction={}'.format(train_cnt, train_acc))
+                    train_acc = train_acc / train_cnt
+                    print('Epoch {}: train acc={:.6f}'.format(epoch, train_acc))
             saver.save(sess, file_to_save)
 
             sess.close()

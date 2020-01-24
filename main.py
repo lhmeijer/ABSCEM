@@ -6,13 +6,14 @@ from abs_classifiers.ontology_reasoner import OntologyReasoner
 from abs_classifiers.lcr_rot import LCRRot
 from abs_classifiers.lcr_rot_inverse import LCRRotInverse
 from abs_classifiers.lcr_rot_hop import LCRRotHopModel
-from diagnostic_classifier.diagnostic_classifier import DiagnosticClassifier
+from diagnostic_classifier.plot_diagnostic_classifier import DiagnosticClassificationPlot
+from diagnostic_classifier.diagnostic_classification import DiagnosticClassifier
 from local_interpretable_model.local_interpretable_model import LocalInterpretableModel
 from explanation.sentence_explanation import SentenceExplaining
 from local_interpretable_model.plots_set_up import SingleSentencePlot
 from explanation.prediction_explanations import get_indices_of_correct_wrong_predictions
 from explanation.sentence_explanation_plot import SentenceExplanationPlot
-import os, json
+import os
 
 
 def main():
@@ -34,7 +35,7 @@ def main():
     ontology = False
     lcr_rot = False
     lcr_rot_inverse = False
-    lcr_rot_hop = False
+    lcr_rot_hop = True
 
     # Do you want to run a hybrid model, the ontology reasoner always runs the hybrid form to set up the
     # remaining data file. Therefore after running ontology reasoner once, you do not need to run it again
@@ -50,7 +51,7 @@ def main():
     diagnostic_classifiers_for_ontology_mentions = False
     diagnostic_classifier_for_part_of_speech_tagging = False
     diagnostic_classifier_for_aspect_relations = False
-    diagnostic_classifier_for_aspect_sentiments = False
+    diagnostic_classifier_for_aspect_sentiments = True
     diagnostic_classifier_for_full_aspect_sentiment = False
 
     diagnostic_classifiers = {
@@ -62,6 +63,12 @@ def main():
         'full_aspect_sentiment': diagnostic_classifier_for_full_aspect_sentiment
     }
 
+    do_you_need_to_fit_diagnostic_classifier = False
+    do_you_need_to_predict_diagnostic_classifier = False
+
+    # Line graph of the prediction results of the diagnostic classification per layer
+    line_graphs_prediction_results_diagnostic_classification = True
+
     # Local Interpretable model, do you want it on or off, please set up the configuration in config.py
     local_interpretable_model = False
 
@@ -72,8 +79,8 @@ def main():
     # Full Explanation model for a given sentence_id: combination of both the diagnostic classifiers, and the local
     # interpretable models
     full_explanation_model = False
-    sentence_id = '1041457:3'
 
+    sentence_id = '1041457:3'
 
     if ontology:
         # Running the ontology reasoner. Cannot use an explanation model for the ontology reasoner
@@ -95,7 +102,16 @@ def main():
         # Running Diagnostic Classifiers on the LCR Rot model.
         if True in diagnostic_classifiers.values():
             diagnostic_classifier = DiagnosticClassifier(lcr_rot_model, diagnostic_classifiers)
-            diagnostic_classifier.run()
+
+            if do_you_need_to_fit_diagnostic_classifier:
+                diagnostic_classifier.fit_diagnostic_classifiers()
+            if do_you_need_to_predict_diagnostic_classifier:
+                diagnostic_classifier.predict_diagnostic_classifiers()
+
+        # Visualizing the prediction results of the diagnostic classifiers in a line graph
+        if line_graphs_prediction_results_diagnostic_classification:
+            diagnostic_classification_plot = DiagnosticClassificationPlot(lcr_rot_model, diagnostic_classifiers)
+            diagnostic_classification_plot.plot()
 
         # Running Local Interpretable model on the LCR Rot model.
         if local_interpretable_model:
@@ -143,7 +159,16 @@ def main():
         # Running Diagnostic Classifiers on the LCR Rot inverse model.
         if True in diagnostic_classifiers.values():
             diagnostic_classifier = DiagnosticClassifier(lcr_rot_inverse_model, diagnostic_classifiers)
-            diagnostic_classifier.run()
+
+            if do_you_need_to_fit_diagnostic_classifier:
+                diagnostic_classifier.fit_diagnostic_classifiers()
+            if do_you_need_to_predict_diagnostic_classifier:
+                diagnostic_classifier.predict_diagnostic_classifiers()
+
+        # Visualizing the prediction results of the diagnostic classifiers in a line graph
+        if line_graphs_prediction_results_diagnostic_classification:
+            diagnostic_classification_plot = DiagnosticClassificationPlot(lcr_rot_inverse_model, diagnostic_classifiers)
+            diagnostic_classification_plot.plot()
 
         # Running Local Interpretable model on the LCR Rot inverse model.
         if local_interpretable_model:
@@ -177,6 +202,7 @@ def main():
             sentence_plot.run(sentence_id)
 
     if lcr_rot_hop:
+
         # Run Diagnostic classifiers on the LCR Rot hop model
         lcr_rot_hop_model = LCRRotHopModel(LCR_RotHopConfig, internal_data_loader)
 
@@ -191,7 +217,16 @@ def main():
         # Running Diagnostic Classifiers on the LCR Rot hop model.
         if True in diagnostic_classifiers.values():
             diagnostic_classifier = DiagnosticClassifier(lcr_rot_hop_model, diagnostic_classifiers)
-            diagnostic_classifier.run()
+
+            if do_you_need_to_fit_diagnostic_classifier:
+                diagnostic_classifier.fit_diagnostic_classifiers()
+            if do_you_need_to_predict_diagnostic_classifier:
+                diagnostic_classifier.predict_diagnostic_classifiers()
+
+        # Visualizing the prediction results of the diagnostic classifiers in a line graph
+        if line_graphs_prediction_results_diagnostic_classification:
+            diagnostic_classification_plot = DiagnosticClassificationPlot(lcr_rot_hop_model, diagnostic_classifiers)
+            diagnostic_classification_plot.plot()
 
         # Running Local Interpretable model on the LCR Rot hop model.
         if local_interpretable_model:

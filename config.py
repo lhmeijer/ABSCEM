@@ -122,38 +122,42 @@ class LCR_RotInverseConfig(LCR_RotConfig):
     te_file_of_hid_corr_pred = "data/hidden_layers/" + str(Config.year) + "/" + name_of_model + "/te_corr_pred.json"
     te_file_of_hid_wrong_pred = "data/hidden_layers/" + str(Config.year) + "/" + name_of_model + "/te_wrong_pred.json"
 
+
 class LCR_RotHopConfig(LCR_RotConfig):
 
-    name_of_model = "LCR_Rot_hop_model"
-    learning_rate = 0.09
-    momentum = 0.9
-    number_of_iterations = 200
+    # n_iterations_hop = 5
+    n_iterations_hop = 10
 
-    n_iterations_hop = 5
+    name_of_model = "LCR_Rot_hop_model_iter_" + str(n_iterations_hop)
+    # name_of_model = "LCR_Rot_hop_model"
+    # learning_rate = 0.09
+    learning_rate = 0.05
 
     file_of_results = "results/abs_classifiers/" + str(Config.year) + "/" + name_of_model + ".json"
     file_of_cross_val_results = "results/abs_classifiers/" + str(Config.year) + "/cross_val_" + name_of_model + "json"
-    file_to_save_model = "abs_classifiers/model_savings/" + str(Config.year) + "/lcr_rot_hop_model/tf_model.ckpt-30"
+    file_to_save_model = "abs_classifiers/model_savings/" + str(Config.year) + "/" + name_of_model + "/tf_model.ckpt-31-150"
 
     file_of_indices = "data/indices/prediction_indices_" + name_of_model + "_" + str(Config.year) + ".json"
     file_hybrid_results = "results/abs_classifiers/" + str(Config.year) + "/hybrid/" + name_of_model + "_results.json"
     file_hybrid_lengths = "results/abs_classifiers/" + str(Config.year) + "/hybrid/" + name_of_model + "_lengths.json"
     file_hybrid_ids = "results/abs_classifiers/" + str(Config.year) + "/hybrid/" + name_of_model + "_ids.json"
 
-    tr_file_of_hid_corr_pred = "data/hidden_layers/" + str(Config.year) + "/" + name_of_model + "/tr_corr_pred.json"
-    tr_file_of_hid_wrong_pred = "data/hidden_layers/" + str(Config.year) + "/" + name_of_model + "/tr_wrong_pred.json"
+    tr_file_of_hid_correct_pred = "data/hidden_layers/" + str(Config.year) + "/" + name_of_model + "/tr_corrrect_pred.json"
+    tr_file_of_hid_incorrect_pred = "data/hidden_layers/" + str(Config.year) + "/" + name_of_model + "/tr_incorrect_pred.json"
 
-    te_file_of_hid_corr_pred = "data/hidden_layers/" + str(Config.year) + "/" + name_of_model + "/te_corr_pred.json"
-    te_file_of_hid_wrong_pred = "data/hidden_layers/" + str(Config.year) + "/" + name_of_model + "/te_wrong_pred.json"
+    te_file_of_hid_correct_pred = "data/hidden_layers/" + str(Config.year) + "/" + name_of_model + "/te_corrrect_pred.json"
+    te_file_of_hid_incorrect_pred = "data/hidden_layers/" + str(Config.year) + "/" + name_of_model + "/te_incorrect_pred.json"
 
 
 class DiagnosticClassifierPOSConfig(Config):
 
     name_of_model = "diagnostic classifier for part of speech tagging"
+    cross_validation_rounds = 10
+
     classifier_embeddings = SingleMLPClassifier(
         learning_rate=0.0001,
-        number_hidden_units=100,
-        number_of_epochs=35,
+        number_hidden_units=300,
+        number_of_epochs=20,
         batch_size=20,
         random_base=0.1,
         number_of_classes=5,
@@ -163,8 +167,8 @@ class DiagnosticClassifierPOSConfig(Config):
 
     classifier_states = SingleMLPClassifier(
         learning_rate=0.0001,
-        number_hidden_units=100,
-        number_of_epochs=35,
+        number_hidden_units=300,
+        number_of_epochs=20,
         batch_size=20,
         random_base=0.1,
         number_of_classes=5,
@@ -172,24 +176,33 @@ class DiagnosticClassifierPOSConfig(Config):
         model_name='pos_tags_st'
     )
 
+    features_names = ['Verb', 'Adjective', 'Adverb', 'Noun', 'Remaining Tag', 'Overall']
+
     @staticmethod
-    def get_file_of_model_savings(name_of_nlm, name_of_hidden_state):
-        return "diagnostic_classifier/model_savings/" + str(Config.year) + "/pos_tags/" + name_of_nlm + "/" + \
-               name_of_hidden_state + "tf_model.ckpt-40"
+    def get_file_of_model_savings(name_of_nlm, name_of_hidden_state, rounds):
+        return "diagnostic_classifier/model_savings/" + str(Config.year) + "/pos_tags/" + name_of_nlm + \
+               "/cross_val_round_" + str(rounds) + "/" + name_of_hidden_state + "tf_model.ckpt-40"
 
     @staticmethod
     def get_file_of_results(name_of_nlm, name_of_result):
         return "results/diagnostic_classifiers/" + str(Config.year) + "/" + name_of_nlm + \
                "/pos_tags/" + name_of_result + ".json"
 
+    @staticmethod
+    def get_file_of_plots(name_of_nlm, name_of_result):
+        return "results/diagnostic_classifiers/" + str(Config.year) + "/" + name_of_nlm + \
+               "/pos_tags/" + name_of_result + ".png"
+
 
 class DiagnosticClassifierAspectSentimentConfig(Config):
 
     name_of_model = "diagnostic classifier for sentiments towards the aspects"
+    cross_validation_rounds = 10
+
     classifier_embeddings = SingleMLPClassifier(
         learning_rate=0.0001,
         number_hidden_units=300,
-        number_of_epochs=100,
+        number_of_epochs=90,
         batch_size=20,
         random_base=0.1,
         number_of_classes=3,
@@ -200,7 +213,7 @@ class DiagnosticClassifierAspectSentimentConfig(Config):
     classifier_states = SingleMLPClassifier(
         learning_rate=0.0001,
         number_hidden_units=300,
-        number_of_epochs=100,
+        number_of_epochs=90,
         batch_size=20,
         random_base=0.1,
         number_of_classes=3,
@@ -208,24 +221,33 @@ class DiagnosticClassifierAspectSentimentConfig(Config):
         model_name='aspect_sentiments_st'
     )
 
+    features_names = ['Positive', 'Negative', 'No Aspect Sentiment', 'Overall']
+
     @staticmethod
-    def get_file_of_model_savings(name_of_nlm, name_of_hidden_state):
-        return "diagnostic_classifier/model_savings/" + str(Config.year) + "/aspect_sentiments/" + name_of_nlm + "/" + \
-               name_of_hidden_state + "tf_model.ckpt-50"
+    def get_file_of_model_savings(name_of_nlm, name_of_hidden_state, rounds):
+        return "diagnostic_classifier/model_savings/" + str(Config.year) + "/aspect_sentiments/" + name_of_nlm + \
+               "/cross_val_round_" + str(rounds) + "/" + name_of_hidden_state + "tf_model.ckpt-50"
 
     @staticmethod
     def get_file_of_results(name_of_nlm, name_of_result):
         return "results/diagnostic_classifiers/" + str(Config.year) + "/" + name_of_nlm + \
                "/aspect_sentiments/" + name_of_result + ".json"
 
+    @staticmethod
+    def get_file_of_plots(name_of_nlm, name_of_result):
+        return "results/diagnostic_classifiers/" + str(Config.year) + "/" + name_of_nlm + \
+               "/aspect_sentiments/" + name_of_result + ".png"
+
 
 class DiagnosticClassifierRelationConfig(Config):
 
     name_of_model = "diagnostic classifier for relations towards the aspects"
+    cross_validation_rounds = 10
+
     classifier_embeddings = SingleMLPClassifier(
         learning_rate=0.0001,
         number_hidden_units=300,
-        number_of_epochs=100,
+        number_of_epochs=90,
         batch_size=20,
         random_base=0.1,
         number_of_classes=2,
@@ -236,7 +258,7 @@ class DiagnosticClassifierRelationConfig(Config):
     classifier_states= SingleMLPClassifier(
         learning_rate=0.0001,
         number_hidden_units=300,
-        number_of_epochs=100,
+        number_of_epochs=90,
         batch_size=20,
         random_base=0.1,
         number_of_classes=2,
@@ -244,24 +266,33 @@ class DiagnosticClassifierRelationConfig(Config):
         model_name='relations_st'
     )
 
+    features_names = ['Yes', 'No', 'Overall']
+
     @staticmethod
-    def get_file_of_model_savings(name_of_nlm, name_of_hidden_state):
-        return "diagnostic_classifier/model_savings/" + str(Config.year) + "/relations/" + name_of_nlm + "/" + \
-               name_of_hidden_state + "tf_model.ckpt-60"
+    def get_file_of_model_savings(name_of_nlm, name_of_hidden_state, rounds):
+        return "diagnostic_classifier/model_savings/" + str(Config.year) + "/relations/" + name_of_nlm + \
+               "/cross_val_round_" + str(rounds) + "/" + name_of_hidden_state + "tf_model.ckpt-60"
 
     @staticmethod
     def get_file_of_results(name_of_nlm, name_of_result):
         return "results/diagnostic_classifiers/" + str(Config.year) + "/" + name_of_nlm + \
                "/relations/" + name_of_result + ".json"
 
+    @staticmethod
+    def get_file_of_plots(name_of_nlm, name_of_result):
+        return "results/diagnostic_classifiers/" + str(Config.year) + "/" + name_of_nlm + \
+               "/relations/" + name_of_result + ".png"
+
 
 class DiagnosticClassifierWordSentimentConfig(Config):
 
     name_of_model = "diagnostic classifier for word sentiments"
+    cross_validation_rounds = 10
+
     classifier_embeddings = SingleMLPClassifier(
         learning_rate=0.0001,
         number_hidden_units=300,
-        number_of_epochs=100,
+        number_of_epochs=90,
         batch_size=20,
         random_base=0.1,
         number_of_classes=3,
@@ -272,7 +303,7 @@ class DiagnosticClassifierWordSentimentConfig(Config):
     classifier_states= SingleMLPClassifier(
         learning_rate=0.0001,
         number_hidden_units=300,
-        number_of_epochs=100,
+        number_of_epochs=90,
         batch_size=20,
         random_base=0.1,
         number_of_classes=3,
@@ -280,20 +311,29 @@ class DiagnosticClassifierWordSentimentConfig(Config):
         model_name='word_sentiments_st'
     )
 
+    features_names = ['Positive', 'Negative', 'No Sentiment', 'Overall']
+
     @staticmethod
-    def get_file_of_model_savings(name_of_nlm, name_of_hidden_state):
-        return "diagnostic_classifier/model_savings/" + str(Config.year) + "/word_sentiments/" + name_of_nlm + "/" + \
-               name_of_hidden_state + "tf_model.ckpt-70"
+    def get_file_of_model_savings(name_of_nlm, name_of_hidden_state, rounds):
+        return "diagnostic_classifier/model_savings/" + str(Config.year) + "/word_sentiments/" + name_of_nlm + \
+               "/cross_val_round_" + str(rounds) + "/" + name_of_hidden_state + "tf_model.ckpt-70"
 
     @staticmethod
     def get_file_of_results(name_of_nlm, name_of_result):
         return "results/diagnostic_classifiers/" + str(Config.year) + "/" + name_of_nlm + \
                 "/word_sentiments/" + name_of_result + ".json"
 
+    @staticmethod
+    def get_file_of_plots(name_of_nlm, name_of_result):
+        return "results/diagnostic_classifiers/" + str(Config.year) + "/" + name_of_nlm + \
+               "/word_sentiments/" + name_of_result + ".png"
+
 
 class DiagnosticClassifierMentionConfig(Config):
 
     name_of_model = "diagnostic classifier for ontology mentions"
+    cross_validation_rounds = 10
+
     classifier_embeddings = SingleMLPClassifier(
         learning_rate=0.0001,
         number_hidden_units=300,
@@ -305,7 +345,7 @@ class DiagnosticClassifierMentionConfig(Config):
         model_name='mentions_em'
     )
 
-    classifier_states= SingleMLPClassifier(
+    classifier_states = SingleMLPClassifier(
         learning_rate=0.0001,
         number_hidden_units=300,
         number_of_epochs=85,
@@ -316,15 +356,24 @@ class DiagnosticClassifierMentionConfig(Config):
         model_name='mentions_st'
     )
 
+    features_names = ['ExperienceMentions', 'AmbienceMentions', 'LocationMentions', 'PriceMentions',
+                      'RestaurantMentions', 'ServiceMentions' , 'StyleOptionsMention', 'SustenanceMention',
+                      'No Aspect', 'Overall']
+
     @staticmethod
-    def get_file_of_model_savings(name_of_nlm, name_of_hidden_state):
-        return "diagnostic_classifier/model_savings/" + str(Config.year) + "/mentions/" + name_of_nlm + "/" + \
-               name_of_hidden_state + "tf_model.ckpt-80"
+    def get_file_of_model_savings(name_of_nlm, name_of_hidden_state, rounds):
+        return "diagnostic_classifier/model_savings/" + str(Config.year) + "/mentions/" + name_of_nlm + \
+               "/cross_val_round_" + str(rounds) + "/" + name_of_hidden_state + "tf_model.ckpt-80"
 
     @staticmethod
     def get_file_of_results(name_of_nlm, name_of_result):
         return "results/diagnostic_classifiers/" + str(Config.year) + "/" + name_of_nlm + \
                 "/mentions/" + name_of_result + ".json"
+
+    @staticmethod
+    def get_file_of_plots(name_of_nlm, name_of_result):
+        return "results/diagnostic_classifiers/" + str(Config.year) + "/" + name_of_nlm + \
+               "/mentions/" + name_of_result + ".png"
 
 
 class DiagnosticClassifierFullAspectSentimentConfig(Config):
@@ -332,6 +381,8 @@ class DiagnosticClassifierFullAspectSentimentConfig(Config):
     max_context_length = 1
 
     name_of_model = "diagnostic classifier for full aspect sentiment"
+    cross_validation_rounds = 10
+
     classifier_embeddings = SingleMLPClassifier(
         learning_rate=0.0001,
         number_hidden_units=300,
@@ -354,15 +405,22 @@ class DiagnosticClassifierFullAspectSentimentConfig(Config):
         model_name='full_aspect_st'
     )
 
+    features_names = ['Positive', 'Neutral', 'Negative', 'Overall']
+
     @staticmethod
-    def get_file_of_model_savings(name_of_nlm, name_of_hidden_state):
+    def get_file_of_model_savings(name_of_nlm, name_of_hidden_state, rounds):
         return "diagnostic_classifier/model_savings/" + str(Config.year) + "/full_aspect_sentiment/" + name_of_nlm + \
-               "/" + name_of_hidden_state + "tf_model.ckpt-120"
+               "/cross_val_round_" + str(rounds) + "/" + name_of_hidden_state + "tf_model.ckpt-120"
 
     @staticmethod
     def get_file_of_results(name_of_nlm, name_of_result):
         return "results/diagnostic_classifiers/" + str(Config.year) + "/" + name_of_nlm + \
                 "/full_aspect_sentiment/" + name_of_result + ".json"
+
+    @staticmethod
+    def get_file_of_plots(name_of_nlm, name_of_result):
+        return "results/diagnostic_classifiers/" + str(Config.year) + "/" + name_of_nlm + \
+               "/full_aspect_sentiment/" + name_of_result + ".png"
 
 
 class LocalInterpretableConfig(Config):

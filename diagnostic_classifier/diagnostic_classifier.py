@@ -93,7 +93,7 @@ class DiagnosticClassifier:
 
         weighted_hidden_state = {}
 
-        if self.neural_language_model.config.name_of_model == "LCR_Rot_hop_model":
+        if "LCR_Rot_hop_model" in self.neural_language_model.config.name_of_model:
 
             for i in range(self.neural_language_model.config.n_iterations_hop):
                 weighted_hidden_state['weighted_left_hidden_state_' + str(i)] = []
@@ -143,7 +143,7 @@ class DiagnosticClassifier:
                 left_word_embeddings.append(x_left_part[index][j].tolist())
                 left_hidden_states.append(tr_layer_information['left_hidden_state'][0][0][j].tolist())
 
-                if self.neural_language_model.config.name_of_model == "LCR_Rot_hop_model":
+                if "LCR_Rot_hop_model" in self.neural_language_model.config.name_of_model:
 
                     for i in range(self.neural_language_model.config.n_iterations_hop):
                         weighted_hidden_state['weighted_left_hidden_state_' + str(i)].append(
@@ -180,7 +180,7 @@ class DiagnosticClassifier:
                 right_word_embeddings.append(x_right_part[index][j].tolist())
                 right_hidden_states.append(tr_layer_information['right_hidden_state'][0][0][j].tolist())
 
-                if self.neural_language_model.config.name_of_model == "LCR_Rot_hop_model":
+                if "LCR_Rot_hop_model" in self.neural_language_model.config.name_of_model:
 
                     for i in range(self.neural_language_model.config.n_iterations_hop):
                         weighted_hidden_state['weighted_right_hidden_state_' + str(i)].append(
@@ -386,7 +386,7 @@ class DiagnosticClassifier:
 
         dict_weighted_hidden_states = feature_values['weighted_hidden_state']
 
-        if self.neural_language_model.config.name_of_model == "LCR_Rot_hop_model":
+        if "LCR_Rot_hop_model" in self.neural_language_model.config.name_of_model:
 
             for i in range(self.neural_language_model.config.n_iterations_hop):
 
@@ -413,8 +413,8 @@ class DiagnosticClassifier:
 
             if not os.path.isfile(file+".index"):
                 diagnostic_config.classifier_states.fit(
-                np.array(dict_weighted_hidden_states['weighted_left_hidden_state'])[left_random_indices],
-                tr_left_y[left_random_indices], self.neural_language_model, file, '_lw')
+                    np.array(dict_weighted_hidden_states['weighted_left_hidden_state'])[left_random_indices],
+                    tr_left_y[left_random_indices], self.neural_language_model, file, '_lw')
 
             file = diagnostic_config.get_file_of_model_savings(
                 self.neural_language_model.config.name_of_model, 'right_weighted_')
@@ -440,7 +440,7 @@ class DiagnosticClassifier:
         acc_right_hidden_states = [0] * right_y.shape[1]
         acc_weighted_hidden_state = {}
 
-        if self.neural_language_model.config.name_of_model == "LCR_Rot_hop_model":
+        if "LCR_Rot_hop_model" in self.neural_language_model.config.name_of_model:
             for i in range(self.neural_language_model.config.n_iterations_hop):
                 acc_weighted_hidden_state['acc_weighted_left_hidden_state_' + str(i)] = [0] * left_y.shape[1]
                 acc_weighted_hidden_state['acc_weighted_right_hidden_state_' + str(i)] = [0] * right_y.shape[1]
@@ -503,7 +503,7 @@ class DiagnosticClassifier:
 
         dict_weighted_hidden_states = feature_values['weighted_hidden_state']
 
-        if self.neural_language_model.config.name_of_model == "LCR_Rot_hop_model":
+        if "LCR_Rot_hop_model" in self.neural_language_model.config.name_of_model:
 
             for i in range(self.neural_language_model.config.n_iterations_hop):
 
@@ -672,8 +672,7 @@ class DiagnosticClassifier:
             diagnostic_config.classifier_states.fit(x_train[random_indices], y[random_indices], self.neural_language_model, file, '_rs')
             # diagnostic_config.classifier_states.fit(x_train, y, self.neural_language_model, file, '_rs')
 
-
-        if self.neural_language_model.config.name_of_model == "LCR_Rot_hop_model":
+        if "LCR_Rot_hop_model" in self.neural_language_model.config.name_of_model:
 
             for i in range(self.neural_language_model.config.n_iterations_hop):
 
@@ -752,7 +751,7 @@ class DiagnosticClassifier:
         dimension = self.neural_language_model.config.embedding_dimension * diagnostic_config.max_context_length
         n_sentences = x_left_part.shape[0]
 
-        if self.neural_language_model.config.name_of_model == "LCR_Rot_hop_model":
+        if "LCR_Rot_hop_model" in self.neural_language_model.config.name_of_model:
             for i in range(self.neural_language_model.config.n_iterations_hop):
                 acc_weighted_hidden_state['acc_weighted_left_hidden_state_' + str(i)] = [0] * y.shape[1]
                 acc_weighted_hidden_state['acc_weighted_right_hidden_state_' + str(i)] = [0] * y.shape[1]
@@ -843,7 +842,7 @@ class DiagnosticClassifier:
                     acc_right_hidden_states[arg_max_pred[index]] += 1
             print("acc_right_hidden_states ", acc_right_hidden_states)
 
-        if self.neural_language_model.config.name_of_model == "LCR_Rot_hop_model":
+        if "LCR_Rot_hop_model" in self.neural_language_model.config.name_of_model:
 
             for i in range(self.neural_language_model.config.n_iterations_hop):
 

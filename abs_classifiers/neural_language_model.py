@@ -43,23 +43,38 @@ class NeuralLanguageModel:
         # Saving procedure for the Tensorflow graph
         tf.add_to_collection(self.config.name_of_model + "_prob", prob)
         tf.add_to_collection(self.config.name_of_model + "_lhs", layer_information['left_hidden_state'])
+        tf.add_to_collection(self.config.name_of_model + "_ths", layer_information['target_hidden_state'])
         tf.add_to_collection(self.config.name_of_model + "_rhs", layer_information['right_hidden_state'])
 
-        if self.config.name_of_model == "LCR_Rot_hop_model":
+        if "LCR_Rot_hop_model" in self.config.name_of_model:
             for i in range(self.config.n_iterations_hop):
                 tf.add_to_collection(self.config.name_of_model + "_lws_" + str(i),
                                      layer_information['weighted_left_hidden_state_' + str(i)])
+                tf.add_to_collection(self.config.name_of_model + "_tlws_" + str(i),
+                                     layer_information['weighted_target_left_hidden_state_' + str(i)])
+                tf.add_to_collection(self.config.name_of_model + "_trws_" + str(i),
+                                     layer_information['weighted_target_right_hidden_state_' + str(i)])
                 tf.add_to_collection(self.config.name_of_model + "_rws_" + str(i),
                                      layer_information['weighted_right_hidden_state_' + str(i)])
                 tf.add_to_collection(self.config.name_of_model + "_lac_" + str(i),
                                      layer_information['left_attention_score_' + str(i)])
+                tf.add_to_collection(self.config.name_of_model + "_tlac_" + str(i),
+                                     layer_information['target_left_attention_score_' + str(i)])
+                tf.add_to_collection(self.config.name_of_model + "_trac_" + str(i),
+                                     layer_information['target_right_attention_score_' + str(i)])
                 tf.add_to_collection(self.config.name_of_model + "_rac_" + str(i),
                                      layer_information['right_attention_score_' + str(i)])
 
         else:
             tf.add_to_collection(self.config.name_of_model + "_lws", layer_information['weighted_left_hidden_state'])
+            tf.add_to_collection(self.config.name_of_model + "_tlws",
+                                 layer_information['weighted_target_left_hidden_state'])
+            tf.add_to_collection(self.config.name_of_model + "_trws",
+                                 layer_information['weighted_target_right_hidden_state'])
             tf.add_to_collection(self.config.name_of_model + "_rws", layer_information['weighted_right_hidden_state'])
             tf.add_to_collection(self.config.name_of_model + "_lac", layer_information['left_attention_score'])
+            tf.add_to_collection(self.config.name_of_model + "_tlac", layer_information['target_left_attention_score'])
+            tf.add_to_collection(self.config.name_of_model + "_trac", layer_information['target_right_attention_score'])
             tf.add_to_collection(self.config.name_of_model + "_rac", layer_information['right_attention_score'])
 
         loss = self.config.loss_function(y, prob)
@@ -123,8 +138,8 @@ class NeuralLanguageModel:
                     train_acc += _train_acc
                     train_cnt += train_num
 
-                    if i % 50 == 0 and not self.config.cross_validation:
-                        saver.save(session, self.config.file_to_save_model, global_step=i)
+                if i % 50 == 0 and not self.config.cross_validation:
+                    saver.save(session, self.config.file_to_save_model, global_step=i)
 
                 test_acc, test_cost, test_cnt = 0., 0., 0
                 te_prediction_y, te_correct_prediction_y = np.array([0, 0, 0]), np.array([0, 0, 0])
@@ -193,7 +208,7 @@ class NeuralLanguageModel:
             collections.append(tf.get_collection(self.config.name_of_model + "_lhs"))
             collections.append(tf.get_collection(self.config.name_of_model + "_rhs"))
 
-            if self.config.name_of_model == "LCR_Rot_hop_model":
+            if "LCR_Rot_hop_model" in self.config.name_of_model:
                 for i in range(self.config.n_iterations_hop):
                     collections.append(tf.get_collection(self.config.name_of_model + "_lws_" + str(i)))
                     collections.append(tf.get_collection(self.config.name_of_model + "_rws_" + str(i)))
@@ -236,7 +251,7 @@ class NeuralLanguageModel:
             'left_hidden_state': result_of_collections[1],
             'right_hidden_state': result_of_collections[2]
         }
-        if self.config.name_of_model == "LCR_Rot_hop_model":
+        if "LCR_Rot_hop_model" in self.config.name_of_model:
             for i in range(self.config.n_iterations_hop):
                 layer_information['weighted_left_hidden_state_' + str(i)] = result_of_collections[3 + i * 4]
                 layer_information['weighted_right_hidden_state_' + str(i)] = result_of_collections[4 + i * 4]
